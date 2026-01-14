@@ -1,0 +1,173 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Admin {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Owner {
+  id             String         @id @default(cuid())
+  email          String         @unique
+  password       String
+  name           String
+  phone          String
+  depositEnabled Boolean        @default(false)
+  depositAmount  Decimal?       @db.Decimal(10, 2)
+  isActive       Boolean        @default(true)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  apartments     Apartment[]
+  notifications  Notification[]
+}
+
+model Apartment {
+  id           String        @id @default(cuid())
+  ownerId      String
+  owner        Owner         @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  name         String
+  address      String
+  description  String?
+  icalUrl      String?
+  lastIcalSync DateTime?
+  isActive     Boolean       @default(true)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  smartLock    SmartLock?
+  reservations Reservation[]
+  icalEvents   ICalEvent[]
+}
+
+model SmartLock {
+  id           String    @id @default(cuid())
+  apartmentId  String    @unique
+  apartment    Apartment @relation(fields: [apartmentId], references: [id], onDelete: Cascade)
+  ttlockId     String    @unique
+  ttlockName   String
+  accessToken  String?
+  refreshToken String?
+  isOnline     Boolean   @default(false)
+  batteryLevel Int?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+}
+
+model Reservation {
+  id              String      @id @default(cuid())
+  apartmentId     String
+  apartment       Apartment   @relation(fields: [apartmentId], references: [id], onDelete: Cascade)
+  guestName       String
+  guestEmail      String?
+  guestPhone      String
+  checkIn         DateTime
+  checkOut        DateTime
+  source          String      @default("manual") // manual | airbnb | booking
+  externalId      String?
+  checkInToken    String      @unique @default(cuid())
+  status          String      @default("pending") // pending | checked_in | completed | cancelled
+  depositRequired Boolean     @default(false)
+  depositAmount   Decimal?    @db.Decimal(10, 2)
+  notes           String?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  guest           Guest?
+  deposit         Deposit?
+  accessCode      AccessCode?
+
+  @@index([apartmentId])
+  @@index([checkIn, checkOut])
+  @@index([status])
+}
+
+model Guest {
+  id              String      @id @default(cuid())
+  reservationId   String      @unique
+  reservation     Reservation @relation(fields: [reservationId], references: [id], onDelete: Cascade)
+  passportImages  String[]
+  passportStatus  String      @default("pending") // pending | approved | rejected
+  rejectionReason String?
+  consentGiven    Boolean     @default(false)
+  consentDate     DateTime?
+  checkedInAt     DateTime?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+}
+
+model Deposit {
+  id               String      @id @default(cuid())
+  reservationId    String      @unique
+  reservation      Reservation @relation(fields: [reservationId], references: [id], onDelete: Cascade)
+  amount           Decimal     @db.Decimal(10, 2)
+  currency         String      @default("GEL")
+  status           String      @default("pending") // pending | paid | refunded | held
+  transactionId    String?
+  paidAt           DateTime?
+  refundedAt       DateTime?
+  ownerConfirmed   Boolean     @default(false)
+  ownerConfirmedAt DateTime?
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+}
+
+model AccessCode {
+  id            String      @id @default(cuid())
+  reservationId String      @unique
+  reservation   Reservation @relation(fields: [reservationId], references: [id], onDelete: Cascade)
+  lockId        String
+  code          String
+  validFrom     DateTime
+  validUntil    DateTime
+  isActive      Boolean     @default(true)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+}
+
+model ICalEvent {
+  id          String    @id @default(cuid())
+  apartmentId String
+  apartment   Apartment @relation(fields: [apartmentId], references: [id], onDelete: Cascade)
+  uid         String
+  summary     String?
+  startDate   DateTime
+  endDate     DateTime
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([apartmentId, uid])
+}
+
+model TTLockToken {
+  id           String   @id @default(cuid())
+  ownerId      String   @unique
+  accessToken  String
+  refreshToken String
+  expiresAt    DateTime
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model Notification {
+  id        String    @id @default(cuid())
+  ownerId   String
+  owner     Owner     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  type      String    // passport_upload | deposit_paid
+  title     String
+  message   String
+  data      Json?
+  isRead    Boolean   @default(false)
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([ownerId, isRead])
+  @@index([createdAt])
+}

@@ -1,0 +1,59 @@
+# ============================================
+# QUICK SERVER SETUP - COPY & PASTE THIS
+# ============================================
+# Open DigitalOcean Console and paste this entire block
+
+apt update && apt upgrade -y && \
+curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && \
+apt install -y nodejs nginx postgresql postgresql-contrib certbot python3-certbot-nginx git unzip && \
+npm install -g pm2 && \
+sudo -u postgres psql -c "CREATE USER smartcheckin WITH PASSWORD 'SmartCheck1n2024!';" && \
+sudo -u postgres psql -c "CREATE DATABASE smartcheckin OWNER smartcheckin;" && \
+mkdir -p /var/www/smartcheckin && \
+echo "server {
+    listen 80;
+    server_name smartcheckin.ge www.smartcheckin.ge;
+    location / {
+        proxy_pass http://127.0.0.1:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade \$http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+        proxy_cache_bypass \$http_upgrade;
+    }
+    client_max_body_size 20M;
+}" > /etc/nginx/sites-available/smartcheckin && \
+ln -sf /etc/nginx/sites-available/smartcheckin /etc/nginx/sites-enabled/ && \
+rm -f /etc/nginx/sites-enabled/default && \
+nginx -t && systemctl reload nginx && \
+ufw allow 'Nginx Full' && ufw allow OpenSSH && echo "y" | ufw enable && \
+echo "========================================" && \
+echo "SERVER SETUP COMPLETE!" && \
+echo "========================================" && \
+echo "Server IP: $(curl -s ifconfig.me)" && \
+echo "Database Password: SmartCheck1n2024!" && \
+echo "Next: Upload your project to /var/www/smartcheckin"
+
+
+# ============================================
+# AFTER UPLOADING FILES, RUN THIS:
+# ============================================
+
+cd /var/www/smartcheckin && \
+npm install && \
+npx prisma generate && \
+npx prisma migrate deploy && \
+npm run build && \
+pm2 start npm --name smartcheckin -- start && \
+pm2 save && \
+pm2 startup
+
+
+# ============================================
+# AFTER DNS IS POINTING TO SERVER, RUN THIS:
+# ============================================
+
+certbot --nginx -d smartcheckin.ge -d www.smartcheckin.ge
