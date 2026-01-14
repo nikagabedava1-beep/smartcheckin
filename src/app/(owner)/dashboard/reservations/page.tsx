@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
-import { Plus, Send, Eye, Copy, Check, Trash2 } from 'lucide-react'
+import { Plus, Send, Eye, Copy, Check, Trash2, Clock } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -10,6 +10,7 @@ import { Modal } from '@/components/ui/modal'
 import { Select } from '@/components/ui/select'
 import { BilingualText } from '@/components/ui/bilingual-text'
 import { StatusBadge, SourceBadge } from '@/components/ui/badge'
+import { DateRangePicker } from '@/components/ui/date-range-picker'
 import { t } from '@/lib/translations'
 import toast from 'react-hot-toast'
 
@@ -62,14 +63,16 @@ export default function ReservationsPage() {
   const [isDeleting, setIsDeleting] = useState(false)
   const [reservedDates, setReservedDates] = useState<ReservedDate[]>([])
   const [dateConflict, setDateConflict] = useState<string | null>(null)
+  const [selectedCheckIn, setSelectedCheckIn] = useState<Date | null>(null)
+  const [selectedCheckOut, setSelectedCheckOut] = useState<Date | null>(null)
+  const [checkInTime, setCheckInTime] = useState('14:00')
+  const [checkOutTime, setCheckOutTime] = useState('11:00')
 
   const [formData, setFormData] = useState({
     apartmentId: '',
     guestName: '',
     guestEmail: '',
     guestPhone: '',
-    checkIn: '',
-    checkOut: '',
     depositRequired: false,
     depositAmount: '',
   })
@@ -141,26 +144,43 @@ export default function ReservationsPage() {
   }
 
   const handleApartmentChange = (apartmentId: string) => {
-    setFormData({ ...formData, apartmentId, checkIn: '', checkOut: '' })
+    setFormData({ ...formData, apartmentId })
+    setSelectedCheckIn(null)
+    setSelectedCheckOut(null)
     setDateConflict(null)
     fetchReservedDates(apartmentId)
   }
 
-  const handleDateChange = (field: 'checkIn' | 'checkOut', value: string) => {
-    const newFormData = { ...formData, [field]: value }
-    setFormData(newFormData)
-    checkDateConflict(newFormData.checkIn, newFormData.checkOut)
-  }
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+
+    if (!selectedCheckIn || !selectedCheckOut) {
+      toast.error('Please select check-in and check-out dates')
+      return
+    }
+
     setIsSaving(true)
+
+    // Combine date and time
+    const checkInDateTime = new Date(selectedCheckIn)
+    const [checkInHour, checkInMin] = checkInTime.split(':')
+    checkInDateTime.setHours(parseInt(checkInHour), parseInt(checkInMin), 0, 0)
+
+    const checkOutDateTime = new Date(selectedCheckOut)
+    const [checkOutHour, checkOutMin] = checkOutTime.split(':')
+    checkOutDateTime.setHours(parseInt(checkOutHour), parseInt(checkOutMin), 0, 0)
+
+    const submitData = {
+      ...formData,
+      checkIn: checkInDateTime.toISOString(),
+      checkOut: checkOutDateTime.toISOString(),
+    }
 
     try {
       const res = await fetch('/api/reservations', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(submitData),
       })
 
       if (!res.ok) throw new Error('Failed to create reservation')
@@ -172,11 +192,12 @@ export default function ReservationsPage() {
         guestName: '',
         guestEmail: '',
         guestPhone: '',
-        checkIn: '',
-        checkOut: '',
         depositRequired: false,
         depositAmount: '',
       })
+      setSelectedCheckIn(null)
+      setSelectedCheckOut(null)
+      setReservedDates([])
       fetchReservations()
     } catch {
       toast.error(`${t.messages.errorOccurred.ka} / ${t.messages.errorOccurred.en}`)
@@ -387,26 +408,6 @@ export default function ReservationsPage() {
             required
           />
 
-          {/* Show reserved dates for selected apartment */}
-          {formData.apartmentId && reservedDates.length > 0 && (
-            <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-              <p className="text-sm font-medium text-yellow-800 mb-2">
-                დაკავებული თარიღები / Reserved Dates:
-              </p>
-              <div className="space-y-1 max-h-32 overflow-y-auto">
-                {reservedDates.map((r, i) => (
-                  <div key={i} className="text-xs text-yellow-700 flex items-center gap-2">
-                    <span className="w-2 h-2 bg-yellow-500 rounded-full"></span>
-                    <span className="font-medium">{r.guestName}:</span>
-                    <span>
-                      {new Date(r.checkIn).toLocaleDateString('ka-GE')} - {new Date(r.checkOut).toLocaleDateString('ka-GE')}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
           <Input
             label={t.reservations.guestName}
             value={formData.guestName}
@@ -428,34 +429,64 @@ export default function ReservationsPage() {
               placeholder="+995 555 123 456"
             />
           </div>
-          <div className="grid grid-cols-2 gap-4">
-            <Input
-              type="datetime-local"
-              label={t.reservations.checkIn}
-              value={formData.checkIn}
-              onChange={(e) => handleDateChange('checkIn', e.target.value)}
-              required
-              disabled={!formData.apartmentId}
-            />
-            <Input
-              type="datetime-local"
-              label={t.reservations.checkOut}
-              value={formData.checkOut}
-              onChange={(e) => handleDateChange('checkOut', e.target.value)}
-              required
-              disabled={!formData.apartmentId}
-            />
-          </div>
 
-          {/* Date conflict warning */}
-          {dateConflict && (
-            <div className="p-3 bg-red-50 border border-red-300 rounded-lg">
-              <p className="text-sm font-medium text-red-800">
-                თარიღები კონფლიქტშია! / Date conflict!
-              </p>
-              <p className="text-xs text-red-600 mt-1">
-                უკვე დაჯავშნილია / Already reserved: {dateConflict}
-              </p>
+          {/* Calendar Date Picker */}
+          {formData.apartmentId ? (
+            <div className="space-y-3">
+              <label className="block text-sm font-medium text-gray-700">
+                თარიღების არჩევა / Select Dates
+              </label>
+              <DateRangePicker
+                reservedDates={reservedDates}
+                checkIn={selectedCheckIn}
+                checkOut={selectedCheckOut}
+                onCheckInChange={setSelectedCheckIn}
+                onCheckOutChange={setSelectedCheckOut}
+              />
+
+              {/* Time selectors */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <Clock className="w-4 h-4 inline mr-1" />
+                    შესვლის დრო / Check-in Time
+                  </label>
+                  <select
+                    value={checkInTime}
+                    onChange={(e) => setCheckInTime(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                  >
+                    {Array.from({ length: 24 }, (_, i) => {
+                      const hour = i.toString().padStart(2, '0')
+                      return (
+                        <option key={hour} value={`${hour}:00`}>{hour}:00</option>
+                      )
+                    })}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <Clock className="w-4 h-4 inline mr-1" />
+                    გასვლის დრო / Check-out Time
+                  </label>
+                  <select
+                    value={checkOutTime}
+                    onChange={(e) => setCheckOutTime(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                  >
+                    {Array.from({ length: 24 }, (_, i) => {
+                      const hour = i.toString().padStart(2, '0')
+                      return (
+                        <option key={hour} value={`${hour}:00`}>{hour}:00</option>
+                      )
+                    })}
+                  </select>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg text-center text-gray-500">
+              ჯერ აირჩიეთ ბინა / First select an apartment
             </div>
           )}
 
@@ -490,7 +521,7 @@ export default function ReservationsPage() {
             <Button type="button" variant="secondary" onClick={() => setIsModalOpen(false)}>
               {t.common.cancel.ka} / {t.common.cancel.en}
             </Button>
-            <Button type="submit" isLoading={isSaving} disabled={!!dateConflict}>
+            <Button type="submit" isLoading={isSaving} disabled={!selectedCheckIn || !selectedCheckOut}>
               {t.common.save.ka} / {t.common.save.en}
             </Button>
           </div>
