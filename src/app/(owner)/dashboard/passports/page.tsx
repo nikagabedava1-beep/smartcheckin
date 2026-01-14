@@ -10,7 +10,6 @@ import { BilingualText } from '@/components/ui/bilingual-text'
 import { Badge } from '@/components/ui/badge'
 import { t } from '@/lib/translations'
 import toast from 'react-hot-toast'
-import Image from 'next/image'
 
 interface Guest {
   id: string
@@ -288,12 +287,11 @@ export default function PassportsPage() {
             <div className="relative">
               {selectedGuest.passportImages.length > 0 ? (
                 <div>
-                  <div className="relative aspect-[4/3] bg-gray-100 rounded-lg overflow-hidden">
-                    <Image
+                  <div className="relative aspect-[4/3] bg-gray-100 rounded-lg overflow-hidden flex items-center justify-center">
+                    <img
                       src={selectedGuest.passportImages[currentImageIndex]}
                       alt={`Passport ${currentImageIndex + 1}`}
-                      fill
-                      className="object-contain"
+                      className="max-w-full max-h-full object-contain"
                     />
                   </div>
                   {selectedGuest.passportImages.length > 1 && (
