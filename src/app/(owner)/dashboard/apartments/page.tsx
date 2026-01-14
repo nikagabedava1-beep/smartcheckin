@@ -28,6 +28,10 @@ interface Apartment {
   description: string | null
   icalUrl: string | null
   lastIcalSync: string | null
+  airbnbIcalUrl: string | null
+  lastAirbnbSync: string | null
+  bookingIcalUrl: string | null
+  lastBookingSync: string | null
   isActive: boolean
   smartLock: SmartLock | null
   _count: {
@@ -50,6 +54,10 @@ export default function ApartmentsPage() {
     address: '',
     description: '',
     icalUrl: '',
+    airbnbSyncEnabled: false,
+    airbnbIcalUrl: '',
+    bookingSyncEnabled: false,
+    bookingIcalUrl: '',
     isActive: true,
   })
 
@@ -77,6 +85,10 @@ export default function ApartmentsPage() {
         address: apartment.address,
         description: apartment.description || '',
         icalUrl: apartment.icalUrl || '',
+        airbnbSyncEnabled: !!apartment.airbnbIcalUrl,
+        airbnbIcalUrl: apartment.airbnbIcalUrl || '',
+        bookingSyncEnabled: !!apartment.bookingIcalUrl,
+        bookingIcalUrl: apartment.bookingIcalUrl || '',
         isActive: apartment.isActive,
       })
     } else {
@@ -86,6 +98,10 @@ export default function ApartmentsPage() {
         address: '',
         description: '',
         icalUrl: '',
+        airbnbSyncEnabled: false,
+        airbnbIcalUrl: '',
+        bookingSyncEnabled: false,
+        bookingIcalUrl: '',
         isActive: true,
       })
     }
@@ -102,10 +118,20 @@ export default function ApartmentsPage() {
         : '/api/apartments'
       const method = selectedApartment ? 'PUT' : 'POST'
 
+      const submitData = {
+        name: formData.name,
+        address: formData.address,
+        description: formData.description,
+        icalUrl: formData.icalUrl,
+        airbnbIcalUrl: formData.airbnbSyncEnabled ? formData.airbnbIcalUrl : null,
+        bookingIcalUrl: formData.bookingSyncEnabled ? formData.bookingIcalUrl : null,
+        isActive: formData.isActive,
+      }
+
       const res = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(submitData),
       })
 
       if (!res.ok) throw new Error('Failed to save')
@@ -235,25 +261,53 @@ export default function ApartmentsPage() {
                   )}
                 </div>
 
-                {/* iCal Status */}
-                {apartment.icalUrl && (
-                  <div className="flex items-center justify-between mb-4 text-sm">
-                    <span className="text-gray-500">
-                      {t.apartments.lastSync.ka}:{' '}
-                      {apartment.lastIcalSync
-                        ? new Date(apartment.lastIcalSync).toLocaleString('ka-GE')
-                        : 'Never'}
-                    </span>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleSyncIcal(apartment.id)}
-                      disabled={syncingId === apartment.id}
-                    >
-                      <RefreshCw
-                        className={`w-4 h-4 ${syncingId === apartment.id ? 'animate-spin' : ''}`}
-                      />
-                    </Button>
+                {/* Calendar Sync Status */}
+                {(apartment.airbnbIcalUrl || apartment.bookingIcalUrl) && (
+                  <div className="mb-4 space-y-2">
+                    {apartment.airbnbIcalUrl && (
+                      <div className="flex items-center justify-between text-sm bg-red-50 p-2 rounded">
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium text-red-700">Airbnb</span>
+                          <span className="text-gray-500 text-xs">
+                            {apartment.lastAirbnbSync
+                              ? new Date(apartment.lastAirbnbSync).toLocaleString('ka-GE')
+                              : 'არ არის სინქრ.'}
+                          </span>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleSyncIcal(apartment.id)}
+                          disabled={syncingId === apartment.id}
+                        >
+                          <RefreshCw
+                            className={`w-4 h-4 ${syncingId === apartment.id ? 'animate-spin' : ''}`}
+                          />
+                        </Button>
+                      </div>
+                    )}
+                    {apartment.bookingIcalUrl && (
+                      <div className="flex items-center justify-between text-sm bg-blue-50 p-2 rounded">
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium text-blue-700">Booking.com</span>
+                          <span className="text-gray-500 text-xs">
+                            {apartment.lastBookingSync
+                              ? new Date(apartment.lastBookingSync).toLocaleString('ka-GE')
+                              : 'არ არის სინქრ.'}
+                          </span>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleSyncIcal(apartment.id)}
+                          disabled={syncingId === apartment.id}
+                        >
+                          <RefreshCw
+                            className={`w-4 h-4 ${syncingId === apartment.id ? 'animate-spin' : ''}`}
+                          />
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -309,13 +363,58 @@ export default function ApartmentsPage() {
             onChange={(e) => setFormData({ ...formData, description: e.target.value })}
             placeholder="Beautiful apartment with amazing views..."
           />
-          <Input
-            label={t.apartments.icalUrl}
-            value={formData.icalUrl}
-            onChange={(e) => setFormData({ ...formData, icalUrl: e.target.value })}
-            placeholder="https://www.airbnb.com/calendar/ical/..."
-            hint={`${t.apartments.icalUrlHelp.ka} / ${t.apartments.icalUrlHelp.en}`}
-          />
+          {/* Calendar Sync Section */}
+          <div className="space-y-4 p-4 bg-gray-50 rounded-lg">
+            <h3 className="font-medium text-gray-900">
+              კალენდრის სინქრონიზაცია / Calendar Sync
+            </h3>
+
+            {/* Airbnb Sync */}
+            <div className="space-y-2">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={formData.airbnbSyncEnabled}
+                  onChange={(e) => setFormData({ ...formData, airbnbSyncEnabled: e.target.checked })}
+                  className="w-4 h-4 text-primary-600 rounded border-gray-300 focus:ring-primary-500"
+                />
+                <span className="text-sm font-medium text-gray-700">
+                  Airbnb კალენდრის სინქრონიზაცია / Airbnb Calendar Sync
+                </span>
+              </label>
+              {formData.airbnbSyncEnabled && (
+                <Input
+                  value={formData.airbnbIcalUrl}
+                  onChange={(e) => setFormData({ ...formData, airbnbIcalUrl: e.target.value })}
+                  placeholder="https://www.airbnb.com/calendar/ical/..."
+                  hint="Airbnb-დან iCal URL დააკოპირეთ / Copy iCal URL from Airbnb"
+                />
+              )}
+            </div>
+
+            {/* Booking.com Sync */}
+            <div className="space-y-2">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={formData.bookingSyncEnabled}
+                  onChange={(e) => setFormData({ ...formData, bookingSyncEnabled: e.target.checked })}
+                  className="w-4 h-4 text-primary-600 rounded border-gray-300 focus:ring-primary-500"
+                />
+                <span className="text-sm font-medium text-gray-700">
+                  Booking.com კალენდრის სინქრონიზაცია / Booking.com Calendar Sync
+                </span>
+              </label>
+              {formData.bookingSyncEnabled && (
+                <Input
+                  value={formData.bookingIcalUrl}
+                  onChange={(e) => setFormData({ ...formData, bookingIcalUrl: e.target.value })}
+                  placeholder="https://admin.booking.com/hotel/hoteladmin/ical.html?..."
+                  hint="Booking.com-დან iCal URL დააკოპირეთ / Copy iCal URL from Booking.com"
+                />
+              )}
+            </div>
+          </div>
 
           <div className="pt-4 border-t">
             <Toggle

@@ -26,93 +26,138 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    if (!apartment.icalUrl) {
-      return NextResponse.json({ error: 'No iCal URL configured' }, { status: 400 })
+    // Check if any calendar URL is configured
+    if (!apartment.airbnbIcalUrl && !apartment.bookingIcalUrl && !apartment.icalUrl) {
+      return NextResponse.json({ error: 'No calendar URL configured' }, { status: 400 })
     }
 
-    // Fetch and parse iCal
-    const calendar = await icalParser.fetchAndParse(apartment.icalUrl)
-    const activeEvents = icalParser.filterActiveEvents(calendar.events)
+    let totalCreated = 0
+    let totalUpdated = 0
+    let totalEvents = 0
 
-    let createdCount = 0
-    let updatedCount = 0
+    // Helper function to sync a single calendar
+    const syncCalendar = async (url: string, source: string) => {
+      const calendar = await icalParser.fetchAndParse(url)
+      const activeEvents = icalParser.filterActiveEvents(calendar.events)
+      let created = 0
+      let updated = 0
 
-    // Process each event
-    for (const event of activeEvents) {
-      // Check if event already exists
-      const existing = await prisma.iCalEvent.findUnique({
-        where: {
-          apartmentId_uid: {
-            apartmentId: apartment.id,
-            uid: event.uid,
-          },
-        },
-      })
-
-      if (existing) {
-        // Update existing event
-        await prisma.iCalEvent.update({
-          where: { id: existing.id },
-          data: {
-            summary: event.summary,
-            startDate: event.startDate,
-            endDate: event.endDate,
-          },
-        })
-        updatedCount++
-      } else {
-        // Create new event
-        await prisma.iCalEvent.create({
-          data: {
-            apartmentId: apartment.id,
-            uid: event.uid,
-            summary: event.summary,
-            startDate: event.startDate,
-            endDate: event.endDate,
-          },
-        })
-        createdCount++
-
-        // Extract guest info and create reservation
-        const guestInfo = icalParser.extractGuestInfo(event)
-
-        // Check if reservation already exists for this period
-        const existingReservation = await prisma.reservation.findFirst({
+      for (const event of activeEvents) {
+        const existing = await prisma.iCalEvent.findUnique({
           where: {
-            apartmentId: apartment.id,
-            checkIn: event.startDate,
-            checkOut: event.endDate,
+            apartmentId_uid: {
+              apartmentId: apartment.id,
+              uid: event.uid,
+            },
           },
         })
 
-        if (!existingReservation && guestInfo.name !== 'Guest') {
-          await prisma.reservation.create({
+        if (existing) {
+          await prisma.iCalEvent.update({
+            where: { id: existing.id },
             data: {
-              apartmentId: apartment.id,
-              guestName: guestInfo.name,
-              guestPhone: guestInfo.phone || '',
-              checkIn: event.startDate,
-              checkOut: event.endDate,
-              source: event.source,
-              externalId: event.uid,
-              status: 'pending',
+              summary: event.summary,
+              startDate: event.startDate,
+              endDate: event.endDate,
             },
           })
+          updated++
+        } else {
+          await prisma.iCalEvent.create({
+            data: {
+              apartmentId: apartment.id,
+              uid: event.uid,
+              summary: event.summary,
+              startDate: event.startDate,
+              endDate: event.endDate,
+            },
+          })
+          created++
+
+          const guestInfo = icalParser.extractGuestInfo(event)
+
+          const existingReservation = await prisma.reservation.findFirst({
+            where: {
+              apartmentId: apartment.id,
+              checkIn: event.startDate,
+              checkOut: event.endDate,
+            },
+          })
+
+          if (!existingReservation && guestInfo.name !== 'Guest') {
+            await prisma.reservation.create({
+              data: {
+                apartmentId: apartment.id,
+                guestName: guestInfo.name,
+                guestPhone: guestInfo.phone || '',
+                checkIn: event.startDate,
+                checkOut: event.endDate,
+                source: source,
+                externalId: event.uid,
+                status: 'pending',
+              },
+            })
+          }
         }
+      }
+
+      return { created, updated, count: activeEvents.length }
+    }
+
+    const updateData: Record<string, Date> = {}
+
+    // Sync Airbnb calendar
+    if (apartment.airbnbIcalUrl) {
+      try {
+        const result = await syncCalendar(apartment.airbnbIcalUrl, 'airbnb')
+        totalCreated += result.created
+        totalUpdated += result.updated
+        totalEvents += result.count
+        updateData.lastAirbnbSync = new Date()
+      } catch (error) {
+        console.error('Error syncing Airbnb calendar:', error)
       }
     }
 
-    // Update last sync time
-    await prisma.apartment.update({
-      where: { id: apartment.id },
-      data: { lastIcalSync: new Date() },
-    })
+    // Sync Booking.com calendar
+    if (apartment.bookingIcalUrl) {
+      try {
+        const result = await syncCalendar(apartment.bookingIcalUrl, 'booking')
+        totalCreated += result.created
+        totalUpdated += result.updated
+        totalEvents += result.count
+        updateData.lastBookingSync = new Date()
+      } catch (error) {
+        console.error('Error syncing Booking.com calendar:', error)
+      }
+    }
+
+    // Sync legacy iCal URL if exists
+    if (apartment.icalUrl) {
+      try {
+        const result = await syncCalendar(apartment.icalUrl, 'ical')
+        totalCreated += result.created
+        totalUpdated += result.updated
+        totalEvents += result.count
+        updateData.lastIcalSync = new Date()
+      } catch (error) {
+        console.error('Error syncing iCal:', error)
+      }
+    }
+
+    // Update last sync times
+    if (Object.keys(updateData).length > 0) {
+      await prisma.apartment.update({
+        where: { id: apartment.id },
+        data: updateData,
+      })
+    }
 
     return NextResponse.json({
       success: true,
-      eventsCount: activeEvents.length,
-      created: createdCount,
-      updated: updatedCount,
+      eventsCount: totalEvents,
+      created: totalCreated,
+      updated: totalUpdated,
     })
   } catch (error) {
     console.error('Error syncing iCal:', error)

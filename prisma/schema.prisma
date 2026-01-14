@@ -32,20 +32,24 @@ model Owner {
 }
 
 model Apartment {
-  id           String        @id @default(cuid())
-  ownerId      String
-  owner        Owner         @relation(fields: [ownerId], references: [id], onDelete: Cascade)
-  name         String
-  address      String
-  description  String?
-  icalUrl      String?
-  lastIcalSync DateTime?
-  isActive     Boolean       @default(true)
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
-  smartLock    SmartLock?
-  reservations Reservation[]
-  icalEvents   ICalEvent[]
+  id              String        @id @default(cuid())
+  ownerId         String
+  owner           Owner         @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  name            String
+  address         String
+  description     String?
+  icalUrl         String?
+  lastIcalSync    DateTime?
+  airbnbIcalUrl   String?
+  lastAirbnbSync  DateTime?
+  bookingIcalUrl  String?
+  lastBookingSync DateTime?
+  isActive        Boolean       @default(true)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  smartLock       SmartLock?
+  reservations    Reservation[]
+  icalEvents      ICalEvent[]
 }
 
 model SmartLock {
