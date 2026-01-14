@@ -9,7 +9,6 @@ import {
   CalendarDays,
   Users,
   Lock,
-  Settings,
   LogOut,
   Menu,
   X,
@@ -48,7 +47,6 @@ const ownerNavItems: NavItem[] = [
   { href: '/dashboard/passports', label: { ka: 'პასპორტები', en: 'Passports' }, icon: IdCard },
   { href: '/dashboard/deposits', label: { ka: 'დეპოზიტები', en: 'Deposits' }, icon: Wallet },
   { href: '/dashboard/guests', label: t.nav.guests, icon: Users },
-  { href: '/dashboard/settings', label: t.nav.settings, icon: Settings },
 ]
 
 export function Sidebar({ role, userName }: SidebarProps) {
