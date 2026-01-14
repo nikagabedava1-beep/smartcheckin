@@ -18,6 +18,12 @@ interface Apartment {
   name: string
 }
 
+interface ReservedDate {
+  checkIn: string
+  checkOut: string
+  guestName: string
+}
+
 interface Reservation {
   id: string
   guestName: string
@@ -54,6 +60,8 @@ export default function ReservationsPage() {
   const [deleteModalOpen, setDeleteModalOpen] = useState(false)
   const [reservationToDelete, setReservationToDelete] = useState<Reservation | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [reservedDates, setReservedDates] = useState<ReservedDate[]>([])
+  const [dateConflict, setDateConflict] = useState<string | null>(null)
 
   const [formData, setFormData] = useState({
     apartmentId: '',
@@ -91,6 +99,57 @@ export default function ReservationsPage() {
     } catch {
       console.error('Failed to fetch apartments')
     }
+  }
+
+  const fetchReservedDates = async (apartmentId: string) => {
+    if (!apartmentId) {
+      setReservedDates([])
+      return
+    }
+    try {
+      const res = await fetch(`/api/reservations/check-availability?apartmentId=${apartmentId}`)
+      const data = await res.json()
+      setReservedDates(data.reservations || [])
+    } catch {
+      console.error('Failed to fetch reserved dates')
+    }
+  }
+
+  const checkDateConflict = (checkIn: string, checkOut: string) => {
+    if (!checkIn || !checkOut || reservedDates.length === 0) {
+      setDateConflict(null)
+      return false
+    }
+
+    const newCheckIn = new Date(checkIn)
+    const newCheckOut = new Date(checkOut)
+
+    for (const reserved of reservedDates) {
+      const resCheckIn = new Date(reserved.checkIn)
+      const resCheckOut = new Date(reserved.checkOut)
+
+      // Check if dates overlap
+      if (newCheckIn < resCheckOut && newCheckOut > resCheckIn) {
+        const conflictMsg = `${reserved.guestName}: ${new Date(reserved.checkIn).toLocaleDateString('ka-GE')} - ${new Date(reserved.checkOut).toLocaleDateString('ka-GE')}`
+        setDateConflict(conflictMsg)
+        return true
+      }
+    }
+
+    setDateConflict(null)
+    return false
+  }
+
+  const handleApartmentChange = (apartmentId: string) => {
+    setFormData({ ...formData, apartmentId, checkIn: '', checkOut: '' })
+    setDateConflict(null)
+    fetchReservedDates(apartmentId)
+  }
+
+  const handleDateChange = (field: 'checkIn' | 'checkOut', value: string) => {
+    const newFormData = { ...formData, [field]: value }
+    setFormData(newFormData)
+    checkDateConflict(newFormData.checkIn, newFormData.checkOut)
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -323,10 +382,31 @@ export default function ReservationsPage() {
             label={t.apartments.name}
             options={apartments.map((a) => ({ value: a.id, label: a.name }))}
             value={formData.apartmentId}
-            onChange={(e) => setFormData({ ...formData, apartmentId: e.target.value })}
+            onChange={(e) => handleApartmentChange(e.target.value)}
             placeholder="Select apartment..."
             required
           />
+
+          {/* Show reserved dates for selected apartment */}
+          {formData.apartmentId && reservedDates.length > 0 && (
+            <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+              <p className="text-sm font-medium text-yellow-800 mb-2">
+                დაკავებული თარიღები / Reserved Dates:
+              </p>
+              <div className="space-y-1 max-h-32 overflow-y-auto">
+                {reservedDates.map((r, i) => (
+                  <div key={i} className="text-xs text-yellow-700 flex items-center gap-2">
+                    <span className="w-2 h-2 bg-yellow-500 rounded-full"></span>
+                    <span className="font-medium">{r.guestName}:</span>
+                    <span>
+                      {new Date(r.checkIn).toLocaleDateString('ka-GE')} - {new Date(r.checkOut).toLocaleDateString('ka-GE')}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           <Input
             label={t.reservations.guestName}
             value={formData.guestName}
@@ -353,17 +433,31 @@ export default function ReservationsPage() {
               type="datetime-local"
               label={t.reservations.checkIn}
               value={formData.checkIn}
-              onChange={(e) => setFormData({ ...formData, checkIn: e.target.value })}
+              onChange={(e) => handleDateChange('checkIn', e.target.value)}
               required
+              disabled={!formData.apartmentId}
             />
             <Input
               type="datetime-local"
               label={t.reservations.checkOut}
               value={formData.checkOut}
-              onChange={(e) => setFormData({ ...formData, checkOut: e.target.value })}
+              onChange={(e) => handleDateChange('checkOut', e.target.value)}
               required
+              disabled={!formData.apartmentId}
             />
           </div>
+
+          {/* Date conflict warning */}
+          {dateConflict && (
+            <div className="p-3 bg-red-50 border border-red-300 rounded-lg">
+              <p className="text-sm font-medium text-red-800">
+                თარიღები კონფლიქტშია! / Date conflict!
+              </p>
+              <p className="text-xs text-red-600 mt-1">
+                უკვე დაჯავშნილია / Already reserved: {dateConflict}
+              </p>
+            </div>
+          )}
 
           {/* Deposit Settings */}
           <div className="border-t pt-4 mt-4">
@@ -396,7 +490,7 @@ export default function ReservationsPage() {
             <Button type="button" variant="secondary" onClick={() => setIsModalOpen(false)}>
               {t.common.cancel.ka} / {t.common.cancel.en}
             </Button>
-            <Button type="submit" isLoading={isSaving}>
+            <Button type="submit" isLoading={isSaving} disabled={!!dateConflict}>
               {t.common.save.ka} / {t.common.save.en}
             </Button>
           </div>

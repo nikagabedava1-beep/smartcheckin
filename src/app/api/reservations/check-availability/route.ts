@@ -18,8 +18,28 @@ export async function GET(request: Request) {
     const checkOut = searchParams.get('checkOut')
     const excludeReservationId = searchParams.get('excludeReservationId')
 
-    if (!apartmentId || !checkIn || !checkOut) {
-      return NextResponse.json({ error: 'Missing required parameters' }, { status: 400 })
+    if (!apartmentId) {
+      return NextResponse.json({ error: 'Missing apartmentId' }, { status: 400 })
+    }
+
+    // If no dates provided, return all future reservations for the apartment
+    if (!checkIn || !checkOut) {
+      const now = new Date()
+      const reservations = await prisma.reservation.findMany({
+        where: {
+          apartmentId,
+          status: { not: 'cancelled' },
+          checkOut: { gte: now },
+        },
+        select: {
+          guestName: true,
+          checkIn: true,
+          checkOut: true,
+        },
+        orderBy: { checkIn: 'asc' },
+      })
+
+      return NextResponse.json({ reservations })
     }
 
     const checkInDate = new Date(checkIn)
