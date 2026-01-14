@@ -222,7 +222,7 @@ export function DateRangePicker({
             <button
               key={date.toISOString()}
               type="button"
-              disabled={disabled || crossesReserved}
+              disabled={disabled || !!crossesReserved}
               onClick={() => handleDateClick(date)}
               className={cn(
                 'h-9 w-full rounded text-sm transition-colors relative',
