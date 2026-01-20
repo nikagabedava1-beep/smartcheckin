@@ -9,8 +9,13 @@ import {
   Loader2,
   Building2,
   ChevronRight,
+  Key,
+  Clock,
+  Info,
 } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
+import { LanguageSwitcher } from '@/components/ui/language-switcher'
+import { useLanguage } from '@/contexts/language-context'
 import { cn } from '@/lib/utils'
 import { t } from '@/lib/translations'
 import toast from 'react-hot-toast'
@@ -18,9 +23,13 @@ import toast from 'react-hot-toast'
 interface ReservationData {
   id: string
   guestName: string
+  checkIn: string
+  checkOut: string
   apartment: {
     name: string
     address: string
+    buildingEntryCode: string | null
+    buildingEntryInstructions: string | null
   }
   accessCode: {
     code: string
@@ -32,6 +41,7 @@ interface ReservationData {
 export default function CheckInSuccessPage() {
   const params = useParams()
   const token = params.token as string
+  const { language, t: translate } = useLanguage()
 
   const [reservation, setReservation] = useState<ReservationData | null>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -68,14 +78,25 @@ export default function CheckInSuccessPage() {
         method: 'POST',
       })
 
-      if (!res.ok) throw new Error('Failed to unlock door')
+      const data = await res.json()
+
+      if (!res.ok) {
+        if (data.error === 'Access code not valid at this time') {
+          toast.error(language === 'ka'
+            ? 'კარის გაღება შესაძლებელია მხოლოდ დაჯავშნის პერიოდში'
+            : 'Door access only available during reservation period')
+        } else {
+          toast.error(language === 'ka' ? 'ვერ გაიღო კარი' : 'Failed to unlock door')
+        }
+        return
+      }
 
       setUnlockSuccess(true)
-      toast.success('კარი გაიღო! / Door unlocked!')
+      toast.success(language === 'ka' ? 'კარი გაიღო!' : 'Door unlocked!')
 
       setTimeout(() => setUnlockSuccess(false), 3000)
     } catch {
-      toast.error('ვერ გაიღო კარი / Failed to unlock door')
+      toast.error(language === 'ka' ? 'ვერ გაიღო კარი' : 'Failed to unlock door')
     } finally {
       setIsUnlocking(false)
     }
@@ -92,8 +113,15 @@ export default function CheckInSuccessPage() {
   if (error || !reservation) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-red-50 to-orange-100 p-4">
+        {/* Language Switcher */}
+        <div className="fixed top-4 right-4 z-50">
+          <LanguageSwitcher />
+        </div>
+
         <Card className="max-w-md w-full text-center p-8">
-          <p className="text-red-600">Link not found / ბმული ვერ მოიძებნა</p>
+          <p className="text-red-600">
+            {language === 'ka' ? 'ბმული ვერ მოიძებნა' : 'Link not found'}
+          </p>
         </Card>
       </div>
     )
@@ -107,6 +135,11 @@ export default function CheckInSuccessPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-100 py-8 px-4">
+      {/* Language Switcher */}
+      <div className="fixed top-4 right-4 z-50">
+        <LanguageSwitcher />
+      </div>
+
       <div className="max-w-md mx-auto">
         {/* Header */}
         <div className="text-center mb-6">
@@ -130,15 +163,69 @@ export default function CheckInSuccessPage() {
           ))}
         </div>
 
+        {/* Access Time Notification */}
+        <Card className="mb-4">
+          <CardContent className="pt-4 pb-4">
+            <div className="flex items-start gap-3 bg-blue-50 text-blue-800 px-4 py-3 rounded-lg">
+              <Clock className="w-5 h-5 mt-0.5 flex-shrink-0" />
+              <div>
+                <p className="font-semibold text-sm">
+                  {language === 'ka'
+                    ? 'კარის გაღება შესაძლებელია მხოლოდ დაჯავშნის პერიოდში'
+                    : 'Door access is only available during your reservation period'}
+                </p>
+                <div className="mt-2 text-xs bg-blue-100 rounded px-2 py-1 inline-block">
+                  {new Date(reservation.checkIn).toLocaleDateString(language === 'ka' ? 'ka-GE' : 'en-US')} {new Date(reservation.checkIn).toLocaleTimeString(language === 'ka' ? 'ka-GE' : 'en-US', { hour: '2-digit', minute: '2-digit' })} - {new Date(reservation.checkOut).toLocaleDateString(language === 'ka' ? 'ka-GE' : 'en-US')} {new Date(reservation.checkOut).toLocaleTimeString(language === 'ka' ? 'ka-GE' : 'en-US', { hour: '2-digit', minute: '2-digit' })}
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Building Entry Card */}
+        {(reservation.apartment.buildingEntryCode || reservation.apartment.buildingEntryInstructions) && (
+          <Card className="mb-4">
+            <CardContent className="pt-4 pb-4">
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 bg-yellow-100 rounded-full flex items-center justify-center flex-shrink-0">
+                  <Key className="w-5 h-5 text-yellow-600" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="font-semibold text-gray-900">
+                    {language === 'ka' ? 'შენობის შესასვლელი' : 'Building Entrance'}
+                  </h3>
+                  {reservation.apartment.buildingEntryCode && (
+                    <div className="mt-2">
+                      <p className="text-xs text-gray-500">
+                        {language === 'ka' ? 'კოდი:' : 'Code:'}
+                      </p>
+                      <p className="text-2xl font-bold text-yellow-600 tracking-wider">
+                        {reservation.apartment.buildingEntryCode}
+                      </p>
+                    </div>
+                  )}
+                  {reservation.apartment.buildingEntryInstructions && (
+                    <div className="mt-2 p-2 bg-yellow-50 rounded text-sm text-gray-700">
+                      <p className="flex items-start gap-1">
+                        <Info className="w-4 h-4 mt-0.5 text-yellow-600 flex-shrink-0" />
+                        {reservation.apartment.buildingEntryInstructions}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Instruction Card */}
         <Card className="mb-6">
           <CardContent className="pt-6">
             <div className="bg-green-100 text-green-800 px-4 py-3 rounded-lg text-center">
               <p className="font-semibold">
-                კარის გასაღებად დააჭირეთ მწვანე ღილაკს
-              </p>
-              <p className="text-sm text-green-600 mt-1">
-                To open the door press the green button
+                {language === 'ka'
+                  ? 'კარის გასაღებად დააჭირეთ მწვანე ღილაკს'
+                  : 'To open the door press the green button'}
               </p>
             </div>
           </CardContent>
@@ -165,10 +252,9 @@ export default function CheckInSuccessPage() {
               <DoorOpen className="w-20 h-20 text-white" />
             )}
             <span className="text-white font-bold mt-2 text-xl">
-              {unlockSuccess ? 'გაიღო!' : 'გაღება'}
-            </span>
-            <span className="text-white/80 text-sm">
-              {unlockSuccess ? 'Opened!' : 'Open'}
+              {unlockSuccess
+                ? (language === 'ka' ? 'გაიღო!' : 'Opened!')
+                : (language === 'ka' ? 'გაღება' : 'Open')}
             </span>
           </button>
         </div>
@@ -199,11 +285,7 @@ export default function CheckInSuccessPage() {
                   </div>
                   <div className="bg-white/90 backdrop-blur-sm rounded-lg px-4 py-2 shadow">
                     <span className="text-gray-800 font-medium">
-                      მიმართულების ნახვა
-                    </span>
-                    <span className="text-gray-500 mx-2">|</span>
-                    <span className="text-gray-600">
-                      Get Directions
+                      {language === 'ka' ? 'მიმართულების ნახვა' : 'Get Directions'}
                     </span>
                   </div>
                 </div>
@@ -223,7 +305,7 @@ export default function CheckInSuccessPage() {
 
         {/* Footer */}
         <div className="text-center mt-8 text-sm text-gray-500">
-          <p>SmartCheckin.ge • სმარტ ჩექინი</p>
+          <p>SmartCheckin.ge • {language === 'ka' ? 'სმარტ ჩექინი' : 'Smart Check-in'}</p>
         </div>
       </div>
     </div>

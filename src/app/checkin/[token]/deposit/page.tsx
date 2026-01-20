@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useParams, useRouter } from 'next/navigation'
+import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import {
   CreditCard,
   Loader2,
@@ -13,6 +13,8 @@ import {
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
+import { LanguageSwitcher } from '@/components/ui/language-switcher'
+import { useLanguage } from '@/contexts/language-context'
 import { cn } from '@/lib/utils'
 import { t } from '@/lib/translations'
 import toast from 'react-hot-toast'
@@ -33,7 +35,9 @@ interface ReservationData {
 export default function DepositPaymentPage() {
   const params = useParams()
   const router = useRouter()
+  const searchParams = useSearchParams()
   const token = params.token as string
+  const { language, t: translate } = useLanguage()
 
   const [reservation, setReservation] = useState<ReservationData | null>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -49,6 +53,16 @@ export default function DepositPaymentPage() {
   useEffect(() => {
     fetchReservation()
   }, [token])
+
+  // Show error if redirected back from BOG with error
+  useEffect(() => {
+    const error = searchParams.get('error')
+    if (error === 'payment_failed') {
+      toast.error(language === 'ka'
+        ? 'გადახდა ვერ შესრულდა. სცადეთ თავიდან'
+        : 'Payment failed. Please try again.')
+    }
+  }, [searchParams, language])
 
   const fetchReservation = async () => {
     try {
@@ -100,7 +114,7 @@ export default function DepositPaymentPage() {
 
   const handlePayment = async () => {
     if (!cardNumber || !expiry || !cvv || !cardHolder) {
-      toast.error('Please fill all card details')
+      toast.error(language === 'ka' ? 'გთხოვთ შეავსოთ ყველა ველი' : 'Please fill all card details')
       return
     }
 
@@ -118,17 +132,31 @@ export default function DepositPaymentPage() {
         }),
       })
 
-      if (!res.ok) throw new Error('Payment failed')
+      const data = await res.json()
 
+      if (!res.ok) {
+        throw new Error(data.details || data.error || 'Payment failed')
+      }
+
+      // If BOG iPay returns a payment URL, redirect to it
+      if (data.paymentUrl) {
+        window.location.href = data.paymentUrl
+        return
+      }
+
+      // Mock payment success
       setPaymentStep('success')
-      toast.success('გადახდა წარმატებით შესრულდა! / Payment successful!')
+      toast.success(language === 'ka'
+        ? 'გადახდა წარმატებით შესრულდა!'
+        : 'Payment successful!')
 
       // Wait a moment then redirect to verification page
       setTimeout(() => {
         router.push(`/checkin/${token}/verify`)
       }, 1500)
-    } catch {
-      toast.error('გადახდა ვერ შესრულდა / Payment failed')
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Payment failed'
+      toast.error(language === 'ka' ? `გადახდა ვერ შესრულდა` : errorMessage)
       setPaymentStep('form')
     } finally {
       setIsPaying(false)
@@ -155,6 +183,11 @@ export default function DepositPaymentPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary-50 to-blue-100 py-8 px-4">
+      {/* Language Switcher */}
+      <div className="fixed top-4 right-4 z-50">
+        <LanguageSwitcher />
+      </div>
+
       <div className="max-w-md mx-auto">
         {/* Header */}
         <div className="text-center mb-6">
@@ -192,22 +225,21 @@ export default function DepositPaymentPage() {
           <CardContent className="pt-6">
             <div className="text-center mb-4">
               <h2 className="text-lg font-semibold text-gray-900 mb-1">
-                დეპოზიტის გადახდა
+                {language === 'ka' ? 'დეპოზიტის გადახდა' : 'Deposit Payment'}
               </h2>
-              <p className="text-sm text-gray-500">Deposit Payment</p>
             </div>
 
             <div className="bg-primary-50 rounded-xl p-4 mb-4">
               <div className="flex justify-between items-center">
-                <span className="text-gray-600">თანხა / Amount:</span>
+                <span className="text-gray-600">
+                  {language === 'ka' ? 'თანხა:' : 'Amount:'}
+                </span>
                 <span className="text-2xl font-bold text-primary-700">
                   {reservation.depositAmount} GEL
                 </span>
               </div>
               <p className="text-xs text-gray-500 mt-2">
-                დეპოზიტი დაგიბრუნდებათ გასვლის შემდეგ
-                <br />
-                Deposit will be refunded after check-out
+                {translate(t.guest.depositInfo)}
               </p>
             </div>
           </CardContent>
@@ -229,7 +261,7 @@ export default function DepositPaymentPage() {
                 {/* Card Number */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    ბარათის ნომერი / Card Number
+                    {language === 'ka' ? 'ბარათის ნომერი' : 'Card Number'}
                   </label>
                   <div className="relative">
                     <input
@@ -248,7 +280,7 @@ export default function DepositPaymentPage() {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      ვადა / Expiry
+                      {language === 'ka' ? 'ვადა' : 'Expiry'}
                     </label>
                     <input
                       type="text"
@@ -280,7 +312,7 @@ export default function DepositPaymentPage() {
                 {/* Card Holder */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    ბარათის მფლობელი / Card Holder
+                    {language === 'ka' ? 'ბარათის მფლობელი' : 'Card Holder'}
                   </label>
                   <input
                     type="text"
@@ -298,12 +330,12 @@ export default function DepositPaymentPage() {
                   disabled={isPaying}
                 >
                   <CreditCard className="w-5 h-5 mr-2" />
-                  გადახდა / Pay {reservation.depositAmount} GEL
+                  {language === 'ka' ? 'გადახდა' : 'Pay'} {reservation.depositAmount} GEL
                 </Button>
 
                 <p className="text-xs text-center text-gray-500 flex items-center justify-center">
                   <Lock className="w-3 h-3 mr-1" />
-                  უსაფრთხო გადახდა / Secure Payment
+                  {language === 'ka' ? 'უსაფრთხო გადახდა' : 'Secure Payment'}
                 </p>
               </div>
             </CardContent>
@@ -317,9 +349,8 @@ export default function DepositPaymentPage() {
               <div className="text-center">
                 <Loader2 className="w-16 h-16 animate-spin text-orange-500 mx-auto mb-4" />
                 <h3 className="text-lg font-semibold text-gray-900">
-                  გადახდა მიმდინარეობს...
+                  {language === 'ka' ? 'გადახდა მიმდინარეობს...' : 'Processing payment...'}
                 </h3>
-                <p className="text-gray-500">Processing payment...</p>
               </div>
             </CardContent>
           </Card>
@@ -334,9 +365,8 @@ export default function DepositPaymentPage() {
                   <Check className="w-10 h-10 text-green-600" />
                 </div>
                 <h3 className="text-lg font-semibold text-gray-900">
-                  გადახდა წარმატებით შესრულდა!
+                  {language === 'ka' ? 'გადახდა წარმატებით შესრულდა!' : 'Payment successful!'}
                 </h3>
-                <p className="text-gray-500">Payment successful!</p>
               </div>
             </CardContent>
           </Card>
@@ -344,7 +374,7 @@ export default function DepositPaymentPage() {
 
         {/* Footer */}
         <div className="text-center mt-8 text-sm text-gray-500">
-          <p>SmartCheckin.ge • სმარტ ჩექინი</p>
+          <p>SmartCheckin.ge • {language === 'ka' ? 'სმარტ ჩექინი' : 'Smart Check-in'}</p>
         </div>
       </div>
     </div>

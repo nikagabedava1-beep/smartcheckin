@@ -7,12 +7,15 @@ import { Lock, Mail, Building2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent } from '@/components/ui/card'
+import { LanguageSwitcher } from '@/components/ui/language-switcher'
+import { useLanguage } from '@/contexts/language-context'
 import { t } from '@/lib/translations'
 import toast from 'react-hot-toast'
 
 function LoginContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const { language, t: translate } = useLanguage()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [isLoading, setIsLoading] = useState(false)
@@ -29,14 +32,14 @@ function LoginContent() {
       })
 
       if (result?.error) {
-        toast.error(`${t.auth.invalidCredentials.ka} / ${t.auth.invalidCredentials.en}`)
+        toast.error(translate(t.auth.invalidCredentials))
       } else {
         const callbackUrl = searchParams.get('callbackUrl')
         router.push(callbackUrl || '/dashboard')
         router.refresh()
       }
     } catch {
-      toast.error(`${t.messages.errorOccurred.ka} / ${t.messages.errorOccurred.en}`)
+      toast.error(translate(t.messages.errorOccurred))
     } finally {
       setIsLoading(false)
     }
@@ -44,6 +47,11 @@ function LoginContent() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-50 to-blue-100 p-4">
+      {/* Language Switcher */}
+      <div className="fixed top-4 right-4 z-50">
+        <LanguageSwitcher />
+      </div>
+
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="text-center mb-8">
@@ -51,15 +59,16 @@ function LoginContent() {
             <Building2 className="w-8 h-8 text-white" />
           </div>
           <h1 className="text-2xl font-bold text-gray-900">SmartCheckin.ge</h1>
-          <p className="text-gray-600">სმარტ ჩექინი</p>
+          <p className="text-gray-600">
+            {language === 'ka' ? 'სმარტ ჩექინი' : 'Smart Check-in'}
+          </p>
         </div>
 
         {/* Owner Login Header */}
         <div className="text-center mb-6">
           <h2 className="text-lg font-medium text-gray-700">
-            {t.auth.ownerLogin.ka}
+            {translate(t.auth.ownerLogin)}
           </h2>
-          <p className="text-sm text-gray-500">{t.auth.ownerLogin.en}</p>
         </div>
 
         {/* Login Form */}
@@ -94,8 +103,7 @@ function LoginContent() {
 
               <Button type="submit" className="w-full" isLoading={isLoading}>
                 <Lock className="w-4 h-4 mr-2" />
-                <span>{t.auth.loginButton.ka}</span>
-                <span className="ml-1 opacity-80">/ {t.auth.loginButton.en}</span>
+                <span>{translate(t.auth.loginButton)}</span>
               </Button>
             </form>
           </CardContent>

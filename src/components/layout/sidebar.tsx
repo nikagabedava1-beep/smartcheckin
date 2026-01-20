@@ -19,6 +19,8 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { t } from '@/lib/translations'
+import { useLanguage } from '@/contexts/language-context'
+import { LanguageSwitcher } from '@/components/ui/language-switcher'
 import { useState, useEffect } from 'react'
 
 interface NavItem {
@@ -51,6 +53,7 @@ const ownerNavItems: NavItem[] = [
 
 export function Sidebar({ role, userName }: SidebarProps) {
   const pathname = usePathname()
+  const { language, t: translate } = useLanguage()
   const [mobileOpen, setMobileOpen] = useState(false)
   const [unreadCount, setUnreadCount] = useState(0)
   const [showNotifications, setShowNotifications] = useState(false)
@@ -115,7 +118,9 @@ export function Sidebar({ role, userName }: SidebarProps) {
       <div className="flex items-center justify-between h-16 px-6 border-b border-gray-200">
         <div>
           <h1 className="text-lg font-bold text-primary-600">SmartCheckin.ge</h1>
-          <p className="text-xs text-gray-500">სმარტ ჩექინი</p>
+          <p className="text-xs text-gray-500">
+            {language === 'ka' ? 'სმარტ ჩექინი' : 'Smart Check-in'}
+          </p>
         </div>
         {role === 'owner' && (
           <div className="relative">
@@ -133,20 +138,22 @@ export function Sidebar({ role, userName }: SidebarProps) {
             {showNotifications && (
               <div className="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
                 <div className="p-3 border-b border-gray-200 flex items-center justify-between">
-                  <span className="font-medium text-gray-900">შეტყობინებები / Notifications</span>
+                  <span className="font-medium text-gray-900">
+                    {language === 'ka' ? 'შეტყობინებები' : 'Notifications'}
+                  </span>
                   {unreadCount > 0 && (
                     <button
                       onClick={markAllAsRead}
                       className="text-xs text-primary-600 hover:text-primary-700"
                     >
-                      ყველას წაკითხულად
+                      {language === 'ka' ? 'ყველას წაკითხულად' : 'Mark all read'}
                     </button>
                   )}
                 </div>
                 <div className="max-h-80 overflow-y-auto">
                   {notifications.length === 0 ? (
                     <div className="p-4 text-center text-gray-500 text-sm">
-                      შეტყობინებები არ არის / No notifications
+                      {language === 'ka' ? 'შეტყობინებები არ არის' : 'No notifications'}
                     </div>
                   ) : (
                     notifications.map((notification) => (
@@ -173,7 +180,7 @@ export function Sidebar({ role, userName }: SidebarProps) {
                             <p className="text-sm font-medium text-gray-900">{notification.title}</p>
                             <p className="text-xs text-gray-500 truncate">{notification.message}</p>
                             <p className="text-xs text-gray-400 mt-1">
-                              {new Date(notification.createdAt).toLocaleString('ka-GE')}
+                              {new Date(notification.createdAt).toLocaleString(language === 'ka' ? 'ka-GE' : 'en-US')}
                             </p>
                           </div>
                           {!notification.isRead && (
@@ -207,10 +214,7 @@ export function Sidebar({ role, userName }: SidebarProps) {
               )}
             >
               <item.icon className="w-5 h-5 mr-3" />
-              <div>
-                <span className="block text-sm font-medium">{item.label.ka}</span>
-                <span className="block text-xs opacity-70">{item.label.en}</span>
-              </div>
+              <span className="text-sm font-medium">{item.label[language]}</span>
             </Link>
           )
         })}
@@ -218,6 +222,11 @@ export function Sidebar({ role, userName }: SidebarProps) {
 
       {/* User section */}
       <div className="border-t border-gray-200 p-4">
+        {/* Language Switcher */}
+        <div className="mb-3">
+          <LanguageSwitcher variant="minimal" />
+        </div>
+
         <div className="flex items-center mb-3">
           <div className="w-10 h-10 rounded-full bg-primary-100 flex items-center justify-center">
             <span className="text-primary-700 font-medium">
@@ -227,7 +236,9 @@ export function Sidebar({ role, userName }: SidebarProps) {
           <div className="ml-3">
             <p className="text-sm font-medium text-gray-900">{userName}</p>
             <p className="text-xs text-gray-500">
-              {role === 'admin' ? 'ადმინისტრატორი / Admin' : 'მფლობელი / Owner'}
+              {role === 'admin'
+                ? (language === 'ka' ? 'ადმინისტრატორი' : 'Admin')
+                : (language === 'ka' ? 'მფლობელი' : 'Owner')}
             </p>
           </div>
         </div>
@@ -236,8 +247,7 @@ export function Sidebar({ role, userName }: SidebarProps) {
           className="flex items-center w-full px-3 py-2 text-sm text-gray-600 rounded-lg hover:bg-gray-100 transition-colors"
         >
           <LogOut className="w-4 h-4 mr-2" />
-          <span>{t.auth.logout.ka}</span>
-          <span className="text-gray-400 ml-1">/ {t.auth.logout.en}</span>
+          <span>{translate(t.auth.logout)}</span>
         </button>
       </div>
     </>

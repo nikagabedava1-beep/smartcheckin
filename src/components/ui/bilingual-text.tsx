@@ -1,10 +1,11 @@
 'use client'
 
 import { cn } from '@/lib/utils'
-import type { BilingualText } from '@/lib/translations'
+import { useLanguage } from '@/contexts/language-context'
+import type { BilingualText as BilingualTextType } from '@/lib/translations'
 
 interface BilingualTextProps {
-  text: BilingualText
+  text: BilingualTextType
   className?: string
   kaClassName?: string
   enClassName?: string
@@ -13,13 +14,13 @@ interface BilingualTextProps {
 }
 
 const sizeClasses = {
-  xs: { ka: 'text-xs', en: 'text-[10px]' },
-  sm: { ka: 'text-sm', en: 'text-xs' },
-  base: { ka: 'text-base', en: 'text-sm' },
-  lg: { ka: 'text-lg', en: 'text-sm' },
-  xl: { ka: 'text-xl', en: 'text-base' },
-  '2xl': { ka: 'text-2xl', en: 'text-lg' },
-  '3xl': { ka: 'text-3xl', en: 'text-xl' },
+  xs: 'text-xs',
+  sm: 'text-sm',
+  base: 'text-base',
+  lg: 'text-lg',
+  xl: 'text-xl',
+  '2xl': 'text-2xl',
+  '3xl': 'text-3xl',
 }
 
 export function BilingualText({
@@ -30,32 +31,36 @@ export function BilingualText({
   as: Component = 'div',
   size = 'base',
 }: BilingualTextProps) {
-  const sizes = sizeClasses[size]
+  const { language } = useLanguage()
+  const sizeClass = sizeClasses[size]
 
   return (
-    <Component className={cn('flex flex-col', className)}>
-      <span className={cn(sizes.ka, 'font-medium text-gray-900', kaClassName)}>
-        {text.ka}
-      </span>
-      <span className={cn(sizes.en, 'text-gray-500', enClassName)}>
-        {text.en}
-      </span>
+    <Component
+      className={cn(
+        sizeClass,
+        'font-medium text-gray-900',
+        className,
+        language === 'ka' ? kaClassName : enClassName
+      )}
+    >
+      {text[language]}
     </Component>
   )
 }
 
-// Inline bilingual text (side by side)
+// Inline bilingual text (shows only selected language)
 interface InlineBilingualProps {
-  text: BilingualText
+  text: BilingualTextType
   className?: string
-  separator?: string
+  separator?: string // Kept for API compatibility but not used anymore
 }
 
-export function InlineBilingual({ text, className, separator = ' / ' }: InlineBilingualProps) {
+export function InlineBilingual({ text, className }: InlineBilingualProps) {
+  const { language } = useLanguage()
+
   return (
-    <span className={className}>
-      <span className="font-medium">{text.ka}</span>
-      <span className="text-gray-500">{separator}{text.en}</span>
+    <span className={cn('font-medium', className)}>
+      {text[language]}
     </span>
   )
 }

@@ -2,6 +2,7 @@
 
 import { forwardRef, InputHTMLAttributes } from 'react'
 import { cn } from '@/lib/utils'
+import { useLanguage } from '@/contexts/language-context'
 import type { BilingualText } from '@/lib/translations'
 
 export interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
@@ -13,6 +14,7 @@ export interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
 export const Input = forwardRef<HTMLInputElement, InputProps>(
   ({ className, label, error, hint, type = 'text', id, ...props }, ref) => {
     const inputId = id || props.name
+    const { language } = useLanguage()
 
     return (
       <div className="w-full">
@@ -21,10 +23,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
             {typeof label === 'string' ? (
               <span className="text-sm font-medium text-gray-700">{label}</span>
             ) : (
-              <>
-                <span className="block text-sm font-medium text-gray-900">{label.ka}</span>
-                <span className="block text-xs text-gray-500">{label.en}</span>
-              </>
+              <span className="text-sm font-medium text-gray-900">{label[language]}</span>
             )}
           </label>
         )}
@@ -61,6 +60,7 @@ export interface TextareaProps extends React.TextareaHTMLAttributes<HTMLTextArea
 export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
   ({ className, label, error, hint, id, ...props }, ref) => {
     const inputId = id || props.name
+    const { language } = useLanguage()
 
     return (
       <div className="w-full">
@@ -69,10 +69,7 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
             {typeof label === 'string' ? (
               <span className="text-sm font-medium text-gray-700">{label}</span>
             ) : (
-              <>
-                <span className="block text-sm font-medium text-gray-900">{label.ka}</span>
-                <span className="block text-xs text-gray-500">{label.en}</span>
-              </>
+              <span className="text-sm font-medium text-gray-900">{label[language]}</span>
             )}
           </label>
         )}

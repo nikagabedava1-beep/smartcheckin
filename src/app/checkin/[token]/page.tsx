@@ -18,6 +18,8 @@ import {
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { BilingualText } from '@/components/ui/bilingual-text'
+import { LanguageSwitcher } from '@/components/ui/language-switcher'
+import { useLanguage } from '@/contexts/language-context'
 import { t } from '@/lib/translations'
 import { cn } from '@/lib/utils'
 import toast from 'react-hot-toast'
@@ -55,6 +57,7 @@ export default function CheckInPage() {
   const params = useParams()
   const router = useRouter()
   const token = params.token as string
+  const { language, t: translate } = useLanguage()
 
   const [reservation, setReservation] = useState<ReservationData | null>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -126,7 +129,7 @@ export default function CheckInPage() {
 
   const handleUploadPassport = async () => {
     if (uploadedFiles.length === 0) {
-      toast.error('Please upload at least one passport image')
+      toast.error(language === 'ka' ? 'გთხოვთ ატვირთოთ პასპორტის ფოტო' : 'Please upload at least one passport image')
       return
     }
 
@@ -145,7 +148,7 @@ export default function CheckInPage() {
 
       if (!res.ok) throw new Error('Upload failed')
 
-      toast.success('Passport uploaded successfully')
+      toast.success(language === 'ka' ? 'პასპორტი წარმატებით აიტვირთა' : 'Passport uploaded successfully')
 
       // Check if deposit is required
       if (reservation?.depositRequired && (!reservation?.deposit || reservation?.deposit?.status !== 'paid')) {
@@ -156,7 +159,7 @@ export default function CheckInPage() {
         router.push(`/checkin/${token}/verify`)
       }
     } catch {
-      toast.error('Failed to upload passport')
+      toast.error(language === 'ka' ? 'პასპორტის ატვირთვა ვერ მოხერხდა' : 'Failed to upload passport')
     } finally {
       setIsUploading(false)
     }
@@ -172,7 +175,7 @@ export default function CheckInPage() {
 
       if (!res.ok) throw new Error('Failed to save consent')
 
-      toast.success('Consent saved')
+      toast.success(language === 'ka' ? 'თანხმობა შენახულია' : 'Consent saved')
 
       if (reservation?.depositRequired) {
         // Go to deposit step if deposit is required and not yet paid
@@ -185,7 +188,7 @@ export default function CheckInPage() {
       // Complete check-in if no deposit required or already paid
       await completeCheckIn()
     } catch {
-      toast.error('Failed to save consent')
+      toast.error(language === 'ka' ? 'თანხმობის შენახვა ვერ მოხერხდა' : 'Failed to save consent')
     } finally {
       setIsProcessing(false)
     }
@@ -208,12 +211,12 @@ export default function CheckInPage() {
         window.location.href = data.paymentUrl
       } else {
         // Payment completed (mock mode)
-        toast.success('Deposit paid successfully')
+        toast.success(language === 'ka' ? 'დეპოზიტი წარმატებით გადახდილია' : 'Deposit paid successfully')
         await completeCheckIn()
         fetchReservation()
       }
     } catch {
-      toast.error('Payment failed')
+      toast.error(language === 'ka' ? 'გადახდა ვერ შესრულდა' : 'Payment failed')
     } finally {
       setIsProcessing(false)
     }
@@ -230,7 +233,7 @@ export default function CheckInPage() {
       // Redirect to success page
       router.push(`/checkin/${token}/success`)
     } catch {
-      toast.error('Failed to complete check-in')
+      toast.error(language === 'ka' ? 'რეგისტრაცია ვერ დასრულდა' : 'Failed to complete check-in')
     }
   }
 
@@ -240,9 +243,7 @@ export default function CheckInPage() {
         <div className="text-center">
           <Loader2 className="w-12 h-12 animate-spin text-primary-600 mx-auto" />
           <p className="mt-4 text-gray-600">
-            {t.common.loading.ka}
-            <br />
-            <span className="text-sm">{t.common.loading.en}</span>
+            {translate(t.common.loading)}
           </p>
         </div>
       </div>
@@ -252,17 +253,19 @@ export default function CheckInPage() {
   if (error || !reservation) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-red-50 to-orange-100 p-4">
+        {/* Language Switcher */}
+        <div className="fixed top-4 right-4 z-50">
+          <LanguageSwitcher />
+        </div>
+
         <Card className="max-w-md w-full">
           <CardContent className="pt-8 pb-6 text-center">
             <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
               <AlertCircle className="w-8 h-8 text-red-600" />
             </div>
-            <h1 className="text-xl font-bold text-gray-900 mb-2">{t.guest.invalidLink.ka}</h1>
-            <p className="text-gray-600">{t.guest.invalidLink.en}</p>
+            <h1 className="text-xl font-bold text-gray-900 mb-2">{translate(t.guest.invalidLink)}</h1>
             <p className="mt-4 text-sm text-gray-500">
-              {t.guest.reservationNotFound.ka}
-              <br />
-              {t.guest.reservationNotFound.en}
+              {translate(t.guest.reservationNotFound)}
             </p>
           </CardContent>
         </Card>
@@ -279,14 +282,18 @@ export default function CheckInPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary-50 to-blue-100 py-8 px-4">
+      {/* Language Switcher */}
+      <div className="fixed top-4 right-4 z-50">
+        <LanguageSwitcher />
+      </div>
+
       <div className="max-w-2xl mx-auto">
         {/* Header */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-16 h-16 bg-primary-600 rounded-2xl mb-4">
             <Building2 className="w-8 h-8 text-white" />
           </div>
-          <h1 className="text-2xl font-bold text-gray-900">{t.guest.welcomeTitle.ka}</h1>
-          <p className="text-gray-600">{t.guest.welcomeTitle.en}</p>
+          <h1 className="text-2xl font-bold text-gray-900">{translate(t.guest.welcomeTitle)}</h1>
         </div>
 
         {/* Reservation Info */}
@@ -301,15 +308,13 @@ export default function CheckInPage() {
                 </div>
                 <div className="flex items-center text-sm text-gray-500 mt-1">
                   <Calendar className="w-4 h-4 mr-1" />
-                  {new Date(reservation.checkIn).toLocaleDateString('ka-GE')} -{' '}
-                  {new Date(reservation.checkOut).toLocaleDateString('ka-GE')}
+                  {new Date(reservation.checkIn).toLocaleDateString(language === 'ka' ? 'ka-GE' : 'en-US')} -{' '}
+                  {new Date(reservation.checkOut).toLocaleDateString(language === 'ka' ? 'ka-GE' : 'en-US')}
                 </div>
               </div>
               <div className="text-right">
                 <p className="text-sm text-gray-500">
-                  {t.guest.welcomeSubtitle.ka}
-                  <br />
-                  <span className="text-xs">{t.guest.welcomeSubtitle.en}</span>
+                  {translate(t.guest.welcomeSubtitle)}
                 </p>
               </div>
             </div>
@@ -347,9 +352,7 @@ export default function CheckInPage() {
               <div>
                 <BilingualText text={t.guest.uploadPassport} as="h2" size="xl" className="mb-2" />
                 <p className="text-gray-500 mb-6">
-                  {t.guest.uploadPassportDesc.ka}
-                  <br />
-                  <span className="text-sm">{t.guest.uploadPassportDesc.en}</span>
+                  {translate(t.guest.uploadPassportDesc)}
                 </p>
 
                 <div
@@ -364,19 +367,17 @@ export default function CheckInPage() {
                   <input {...getInputProps()} />
                   <Upload className="w-12 h-12 text-gray-400 mx-auto mb-4" />
                   <p className="text-gray-600 mb-2">
-                    {t.guest.dragDropFiles.ka}
-                    <br />
-                    <span className="text-sm">{t.guest.dragDropFiles.en}</span>
+                    {translate(t.guest.dragDropFiles)}
                   </p>
                   <p className="text-xs text-gray-400">
-                    {t.guest.supportedFormats.ka} • {t.guest.maxFileSize.ka}
+                    {translate(t.guest.supportedFormats)} • {translate(t.guest.maxFileSize)}
                   </p>
                 </div>
 
                 {uploadedFiles.length > 0 && (
                   <div className="mt-4">
                     <p className="text-sm font-medium text-gray-700 mb-2">
-                      {t.guest.uploadedFiles.ka} / {t.guest.uploadedFiles.en}:
+                      {translate(t.guest.uploadedFiles)}:
                     </p>
                     <div className="space-y-2">
                       {uploadedFiles.map((file, index) => (
@@ -403,7 +404,7 @@ export default function CheckInPage() {
                   isLoading={isUploading}
                   disabled={uploadedFiles.length === 0}
                 >
-                  {t.common.next.ka} / {t.common.next.en}
+                  {translate(t.common.next)}
                 </Button>
               </div>
             )}
@@ -414,8 +415,7 @@ export default function CheckInPage() {
                 <BilingualText text={t.guest.consentTitle} as="h2" size="xl" className="mb-2" />
 
                 <div className="bg-gray-50 rounded-xl p-6 my-6">
-                  <p className="text-gray-700 mb-4">{t.guest.consentText.ka}</p>
-                  <p className="text-sm text-gray-500">{t.guest.consentText.en}</p>
+                  <p className="text-gray-700">{translate(t.guest.consentText)}</p>
                 </div>
 
                 <Button
@@ -424,7 +424,7 @@ export default function CheckInPage() {
                   isLoading={isProcessing}
                   leftIcon={<Check className="w-4 h-4" />}
                 >
-                  {t.guest.agreeConsent.ka} / {t.guest.agreeConsent.en}
+                  {translate(t.guest.agreeConsent)}
                 </Button>
               </div>
             )}
@@ -437,16 +437,14 @@ export default function CheckInPage() {
                 <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-6 my-6">
                   <div className="flex items-center justify-between mb-4">
                     <span className="text-gray-700">
-                      {t.guest.depositAmount.ka} / {t.guest.depositAmount.en}:
+                      {translate(t.guest.depositAmount)}:
                     </span>
                     <span className="text-2xl font-bold text-gray-900">
                       {reservation.deposit.amount} GEL
                     </span>
                   </div>
                   <p className="text-sm text-gray-500">
-                    {t.guest.depositInfo.ka}
-                    <br />
-                    {t.guest.depositInfo.en}
+                    {translate(t.guest.depositInfo)}
                   </p>
                 </div>
 
@@ -456,7 +454,7 @@ export default function CheckInPage() {
                   isLoading={isProcessing}
                   leftIcon={<CreditCard className="w-4 h-4" />}
                 >
-                  {t.guest.payDeposit.ka} / {t.guest.payDeposit.en}
+                  {translate(t.guest.payDeposit)}
                 </Button>
               </div>
             )}
@@ -465,7 +463,7 @@ export default function CheckInPage() {
 
         {/* Footer */}
         <div className="text-center mt-8 text-sm text-gray-500">
-          <p>SmartCheckin.ge • სმარტ ჩექინი</p>
+          <p>SmartCheckin.ge • {language === 'ka' ? 'სმარტ ჩექინი' : 'Smart Check-in'}</p>
         </div>
       </div>
     </div>
