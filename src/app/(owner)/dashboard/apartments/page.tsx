@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
-import { Plus, Pencil, Trash2, Lock, RefreshCw, Calendar } from 'lucide-react'
+import { Plus, Pencil, Trash2, Lock, RefreshCw, Calendar, Link2, Unlink } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input, Textarea } from '@/components/ui/input'
 import { Card, CardContent } from '@/components/ui/card'
@@ -21,11 +21,21 @@ interface SmartLock {
   batteryLevel: number | null
 }
 
+interface TTLockLock {
+  lockId: number
+  lockName: string
+  lockAlias: string
+  electricQuantity: number
+  hasGateway: number
+}
+
 interface Apartment {
   id: string
   name: string
   address: string
   description: string | null
+  buildingEntryCode: string | null
+  buildingEntryInstructions: string | null
   icalUrl: string | null
   lastIcalSync: string | null
   airbnbIcalUrl: string | null
@@ -49,10 +59,20 @@ export default function ApartmentsPage() {
   const [isSaving, setIsSaving] = useState(false)
   const [syncingId, setSyncingId] = useState<string | null>(null)
 
+  // Lock assignment state
+  const [isLockModalOpen, setIsLockModalOpen] = useState(false)
+  const [lockModalApartment, setLockModalApartment] = useState<Apartment | null>(null)
+  const [ttlockConnected, setTtlockConnected] = useState(false)
+  const [availableLocks, setAvailableLocks] = useState<TTLockLock[]>([])
+  const [isLoadingLocks, setIsLoadingLocks] = useState(false)
+  const [isAssigningLock, setIsAssigningLock] = useState(false)
+
   const [formData, setFormData] = useState({
     name: '',
     address: '',
     description: '',
+    buildingEntryCode: '',
+    buildingEntryInstructions: '',
     icalUrl: '',
     airbnbSyncEnabled: false,
     airbnbIcalUrl: '',
@@ -63,7 +83,79 @@ export default function ApartmentsPage() {
 
   useEffect(() => {
     fetchApartments()
+    checkTTLockStatus()
   }, [])
+
+  const checkTTLockStatus = async () => {
+    try {
+      const res = await fetch('/api/ttlock/status')
+      const data = await res.json()
+      setTtlockConnected(data.connected && !data.isExpired)
+    } catch {
+      setTtlockConnected(false)
+    }
+  }
+
+  const fetchAvailableLocks = async () => {
+    setIsLoadingLocks(true)
+    try {
+      const res = await fetch('/api/ttlock/locks')
+      const data = await res.json()
+      if (res.ok) {
+        setAvailableLocks(data.locks || [])
+      }
+    } catch {
+      toast.error('Failed to fetch locks')
+    } finally {
+      setIsLoadingLocks(false)
+    }
+  }
+
+  const handleOpenLockModal = (apartment: Apartment) => {
+    setLockModalApartment(apartment)
+    setIsLockModalOpen(true)
+    if (ttlockConnected) {
+      fetchAvailableLocks()
+    }
+  }
+
+  const handleAssignLock = async (lockId: number, lockName: string) => {
+    if (!lockModalApartment) return
+
+    setIsAssigningLock(true)
+    try {
+      const res = await fetch(`/api/apartments/${lockModalApartment.id}/lock`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ lockId, lockName }),
+      })
+
+      if (!res.ok) throw new Error('Failed to assign lock')
+
+      toast.success('საკეტი მინიჭებულია / Lock assigned')
+      setIsLockModalOpen(false)
+      fetchApartments()
+    } catch {
+      toast.error('საკეტის მინიჭება ვერ მოხერხდა / Failed to assign lock')
+    } finally {
+      setIsAssigningLock(false)
+    }
+  }
+
+  const handleRemoveLock = async (apartmentId: string) => {
+    try {
+      const res = await fetch(`/api/apartments/${apartmentId}/lock`, {
+        method: 'DELETE',
+      })
+
+      if (!res.ok) throw new Error('Failed to remove lock')
+
+      toast.success('საკეტი მოხსნილია / Lock removed')
+      fetchApartments()
+    } catch {
+      toast.error('საკეტის მოხსნა ვერ მოხერხდა / Failed to remove lock')
+    }
+  }
 
   const fetchApartments = async () => {
     try {
@@ -84,6 +176,8 @@ export default function ApartmentsPage() {
         name: apartment.name,
         address: apartment.address,
         description: apartment.description || '',
+        buildingEntryCode: apartment.buildingEntryCode || '',
+        buildingEntryInstructions: apartment.buildingEntryInstructions || '',
         icalUrl: apartment.icalUrl || '',
         airbnbSyncEnabled: !!apartment.airbnbIcalUrl,
         airbnbIcalUrl: apartment.airbnbIcalUrl || '',
@@ -97,6 +191,8 @@ export default function ApartmentsPage() {
         name: '',
         address: '',
         description: '',
+        buildingEntryCode: '',
+        buildingEntryInstructions: '',
         icalUrl: '',
         airbnbSyncEnabled: false,
         airbnbIcalUrl: '',
@@ -122,6 +218,8 @@ export default function ApartmentsPage() {
         name: formData.name,
         address: formData.address,
         description: formData.description,
+        buildingEntryCode: formData.buildingEntryCode || null,
+        buildingEntryInstructions: formData.buildingEntryInstructions || null,
         icalUrl: formData.icalUrl,
         airbnbIcalUrl: formData.airbnbSyncEnabled ? formData.airbnbIcalUrl : null,
         bookingIcalUrl: formData.bookingSyncEnabled ? formData.bookingIcalUrl : null,
@@ -238,26 +336,44 @@ export default function ApartmentsPage() {
                 <div className="flex items-center gap-2 mb-4 p-3 bg-gray-50 rounded-lg">
                   <Lock className="w-4 h-4 text-gray-400" />
                   {apartment.smartLock ? (
-                    <div className="flex-1">
-                      <span className="text-sm font-medium">{apartment.smartLock.ttlockName}</span>
-                      <div className="flex items-center gap-2 mt-1">
-                        <Badge
-                          variant={apartment.smartLock.isOnline ? 'success' : 'default'}
-                          size="sm"
-                        >
-                          {apartment.smartLock.isOnline ? 'Online' : 'Offline'}
-                        </Badge>
-                        {apartment.smartLock.batteryLevel && (
-                          <span className="text-xs text-gray-500">
-                            🔋 {apartment.smartLock.batteryLevel}%
-                          </span>
-                        )}
+                    <div className="flex-1 flex items-center justify-between">
+                      <div>
+                        <span className="text-sm font-medium">{apartment.smartLock.ttlockName}</span>
+                        <div className="flex items-center gap-2 mt-1">
+                          <Badge
+                            variant={apartment.smartLock.isOnline ? 'success' : 'default'}
+                            size="sm"
+                          >
+                            {apartment.smartLock.isOnline ? 'Online' : 'Offline'}
+                          </Badge>
+                          {apartment.smartLock.batteryLevel && (
+                            <span className="text-xs text-gray-500">
+                              {apartment.smartLock.batteryLevel}%
+                            </span>
+                          )}
+                        </div>
                       </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleRemoveLock(apartment.id)}
+                      >
+                        <Unlink className="w-4 h-4 text-red-500" />
+                      </Button>
                     </div>
                   ) : (
-                    <span className="text-sm text-gray-500">
-                      {t.apartments.noLock.ka} / {t.apartments.noLock.en}
-                    </span>
+                    <div className="flex-1 flex items-center justify-between">
+                      <span className="text-sm text-gray-500">
+                        {t.apartments.noLock.ka} / {t.apartments.noLock.en}
+                      </span>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleOpenLockModal(apartment)}
+                      >
+                        <Link2 className="w-4 h-4 text-primary-600" />
+                      </Button>
+                    </div>
                   )}
                 </div>
 
@@ -363,6 +479,31 @@ export default function ApartmentsPage() {
             onChange={(e) => setFormData({ ...formData, description: e.target.value })}
             placeholder="Beautiful apartment with amazing views..."
           />
+
+          {/* Building Entry Section */}
+          <div className="space-y-4 p-4 bg-yellow-50 rounded-lg border border-yellow-200">
+            <h3 className="font-medium text-gray-900">
+              შენობის შესასვლელი / Building Entrance
+            </h3>
+            <p className="text-sm text-gray-600">
+              მიუთითეთ როგორ შევიდეს სტუმარი შენობაში / Specify how the guest enters the building
+            </p>
+            <Input
+              label={{ ka: 'შენობის კოდი', en: 'Building Entry Code' }}
+              value={formData.buildingEntryCode}
+              onChange={(e) => setFormData({ ...formData, buildingEntryCode: e.target.value })}
+              placeholder="1234 ან #1234"
+              hint="კოდი რომლითაც იღება სადარბაზოს კარი / Code to open the building entrance"
+            />
+            <Textarea
+              label={{ ka: 'დამატებითი ინსტრუქციები', en: 'Additional Instructions' }}
+              value={formData.buildingEntryInstructions}
+              onChange={(e) => setFormData({ ...formData, buildingEntryInstructions: e.target.value })}
+              placeholder="მაგ: მე-2 სართული, მარცხენა კარი / e.g.: 2nd floor, left door"
+              hint="სტუმრისთვის დამატებითი ინფორმაცია / Additional info for the guest"
+            />
+          </div>
+
           {/* Calendar Sync Section */}
           <div className="space-y-4 p-4 bg-gray-50 rounded-lg">
             <h3 className="font-medium text-gray-900">
@@ -449,6 +590,94 @@ export default function ApartmentsPage() {
         variant="danger"
         isLoading={isSaving}
       />
+
+      {/* Lock Assignment Modal */}
+      <Modal
+        isOpen={isLockModalOpen}
+        onClose={() => setIsLockModalOpen(false)}
+        title={{ ka: 'საკეტის მინიჭება', en: 'Assign Lock' }}
+      >
+        <div className="space-y-4">
+          {lockModalApartment && (
+            <p className="text-sm text-gray-600">
+              {lockModalApartment.name} - {lockModalApartment.address}
+            </p>
+          )}
+
+          {!ttlockConnected ? (
+            <div className="text-center py-6">
+              <Lock className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+              <p className="text-gray-600 mb-2">
+                TTLock არ არის დაკავშირებული
+              </p>
+              <p className="text-sm text-gray-500 mb-4">
+                TTLock is not connected
+              </p>
+              <Button
+                onClick={() => window.location.href = '/dashboard/settings'}
+              >
+                პარამეტრებში გადასვლა / Go to Settings
+              </Button>
+            </div>
+          ) : isLoadingLocks ? (
+            <div className="space-y-2">
+              {[1, 2].map((i) => (
+                <div key={i} className="h-16 bg-gray-100 animate-pulse rounded-lg" />
+              ))}
+            </div>
+          ) : availableLocks.length === 0 ? (
+            <div className="text-center py-6">
+              <Lock className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+              <p className="text-gray-600">
+                საკეტები არ მოიძებნა / No locks found
+              </p>
+              <p className="text-sm text-gray-500 mt-2">
+                დარწმუნდით რომ საკეტი დაკავშირებულია TTLock აპლიკაციაში
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {availableLocks.map((lock) => (
+                <div
+                  key={lock.lockId}
+                  className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+                >
+                  <div className="flex items-center gap-3">
+                    <Lock className="w-5 h-5 text-gray-400" />
+                    <div>
+                      <p className="font-medium">{lock.lockAlias || lock.lockName}</p>
+                      <div className="flex items-center gap-2 mt-1">
+                        <Badge
+                          variant={lock.hasGateway ? 'success' : 'warning'}
+                          size="sm"
+                        >
+                          {lock.hasGateway ? 'Gateway' : 'No Gateway'}
+                        </Badge>
+                        <span className="text-xs text-gray-500">
+                          {lock.electricQuantity}%
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  <Button
+                    size="sm"
+                    onClick={() => handleAssignLock(lock.lockId, lock.lockAlias || lock.lockName)}
+                    isLoading={isAssigningLock}
+                  >
+                    მინიჭება / Assign
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div className="flex justify-end pt-4 border-t">
+            <Button variant="secondary" onClick={() => setIsLockModalOpen(false)}>
+              {t.common.cancel.ka} / {t.common.cancel.en}
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   )
 }

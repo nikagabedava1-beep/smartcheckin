@@ -16,6 +16,7 @@ import {
   IdCard,
   Wallet,
   Bell,
+  Settings,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { t } from '@/lib/translations'
@@ -47,6 +48,7 @@ const ownerNavItems: NavItem[] = [
   { href: '/dashboard/passports', label: { ka: 'პასპორტები', en: 'Passports' }, icon: IdCard },
   { href: '/dashboard/deposits', label: { ka: 'დეპოზიტები', en: 'Deposits' }, icon: Wallet },
   { href: '/dashboard/guests', label: t.nav.guests, icon: Users },
+  { href: '/dashboard/settings', label: { ka: 'პარამეტრები', en: 'Settings' }, icon: Settings },
 ]
 
 export function Sidebar({ role, userName }: SidebarProps) {
