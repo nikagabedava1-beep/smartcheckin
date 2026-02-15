@@ -1,6 +1,7 @@
 import axios from 'axios'
 
 const TTLOCK_API_URL = 'https://euapi.ttlock.com'
+const TTLOCK_OAUTH_URL = 'https://euopen.ttlock.com'
 
 interface TTLockConfig {
   clientId: string
@@ -49,7 +50,7 @@ class TTLockClient {
       response_type: 'code',
       state,
     })
-    return `${TTLOCK_API_URL}/oauth2/authorize?${params.toString()}`
+    return `${TTLOCK_OAUTH_URL}/oauth2/authorize?${params.toString()}`
   }
 
   // Exchange authorization code for tokens
