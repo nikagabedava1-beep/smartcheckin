@@ -1,12 +1,11 @@
 import axios from 'axios'
+import crypto from 'crypto'
 
 const TTLOCK_API_URL = 'https://euapi.ttlock.com'
-const TTLOCK_OAUTH_URL = 'https://euopen.ttlock.com'
 
 interface TTLockConfig {
   clientId: string
   clientSecret: string
-  redirectUri: string
 }
 
 interface TTLockToken {
@@ -38,32 +37,30 @@ class TTLockClient {
     this.config = {
       clientId: process.env.TTLOCK_CLIENT_ID || '',
       clientSecret: process.env.TTLOCK_CLIENT_SECRET || '',
-      redirectUri: process.env.TTLOCK_REDIRECT_URI || '',
     }
   }
 
-  // Get OAuth authorization URL
-  getAuthUrl(state: string): string {
-    const params = new URLSearchParams({
-      client_id: this.config.clientId,
-      redirect_uri: this.config.redirectUri,
-      response_type: 'code',
-      state,
-    })
-    return `${TTLOCK_OAUTH_URL}/oauth2/authorize?${params.toString()}`
+  // Hash password with MD5 (TTLock requires MD5 hashed password)
+  private hashPassword(password: string): string {
+    return crypto.createHash('md5').update(password).digest('hex')
   }
 
-  // Exchange authorization code for tokens
-  async getToken(code: string): Promise<TTLockToken> {
+  // Get access token using username/password (Resource Owner Password flow)
+  async getToken(username: string, password: string): Promise<TTLockToken> {
+    const hashedPassword = this.hashPassword(password)
+
     const response = await axios.post(`${TTLOCK_API_URL}/oauth2/token`, null, {
       params: {
         client_id: this.config.clientId,
         client_secret: this.config.clientSecret,
-        grant_type: 'authorization_code',
-        code,
-        redirect_uri: this.config.redirectUri,
+        username,
+        password: hashedPassword,
       },
     })
+
+    if (response.data.errcode) {
+      throw new Error(`TTLock Auth Error: ${response.data.errmsg}`)
+    }
 
     return {
       accessToken: response.data.access_token,
