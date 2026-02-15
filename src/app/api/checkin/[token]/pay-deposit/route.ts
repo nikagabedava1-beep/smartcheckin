@@ -78,7 +78,11 @@ export async function POST(request: Request, { params }: { params: Promise<{ tok
         })
       } catch (error) {
         console.error('Payment initiation error:', error)
-        return NextResponse.json({ error: 'Payment failed' }, { status: 500 })
+        const errorMessage = error instanceof Error ? error.message : 'Payment failed'
+        return NextResponse.json({
+          error: 'Payment initialization failed',
+          details: errorMessage
+        }, { status: 500 })
       }
     } else {
       // Mock payment for development

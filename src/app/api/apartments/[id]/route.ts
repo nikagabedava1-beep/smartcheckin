@@ -67,7 +67,7 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
     }
 
     const body = await request.json()
-    const { name, address, description, icalUrl, airbnbIcalUrl, bookingIcalUrl, isActive } = body
+    const { name, address, description, buildingEntryCode, buildingEntryInstructions, icalUrl, airbnbIcalUrl, bookingIcalUrl, isActive } = body
 
     const apartment = await prisma.apartment.update({
       where: { id },
@@ -75,6 +75,8 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
         name,
         address,
         description,
+        buildingEntryCode: buildingEntryCode || null,
+        buildingEntryInstructions: buildingEntryInstructions || null,
         icalUrl: icalUrl || null,
         airbnbIcalUrl: airbnbIcalUrl || null,
         bookingIcalUrl: bookingIcalUrl || null,

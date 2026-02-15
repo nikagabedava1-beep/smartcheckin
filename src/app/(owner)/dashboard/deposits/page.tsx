@@ -37,7 +37,7 @@ interface Deposit {
 export default function DepositsPage() {
   const [deposits, setDeposits] = useState<Deposit[]>([])
   const [isLoading, setIsLoading] = useState(true)
-  const [filter, setFilter] = useState('paid')
+  const [filter, setFilter] = useState('pending')
   const [confirmingId, setConfirmingId] = useState<string | null>(null)
 
   useEffect(() => {
@@ -102,8 +102,8 @@ export default function DepositsPage() {
         />
         <Select
           options={[
-            { value: 'paid', label: { ka: 'გადახდილი', en: 'Paid' } },
             { value: 'pending', label: { ka: 'მოლოდინში', en: 'Pending' } },
+            { value: 'paid', label: { ka: 'გადახდილი', en: 'Paid' } },
             { value: 'refunded', label: { ka: 'დაბრუნებული', en: 'Refunded' } },
             { value: 'all', label: { ka: 'ყველა', en: 'All' } },
           ]}

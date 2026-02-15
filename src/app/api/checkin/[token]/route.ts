@@ -12,6 +12,8 @@ export async function GET(request: Request, { params }: { params: Promise<{ toke
           select: {
             name: true,
             address: true,
+            buildingEntryCode: true,
+            buildingEntryInstructions: true,
           },
         },
         guest: {
@@ -65,6 +67,8 @@ export async function GET(request: Request, { params }: { params: Promise<{ toke
       apartment: {
         name: reservation.apartment.name,
         address: reservation.apartment.address,
+        buildingEntryCode: reservation.apartment.buildingEntryCode,
+        buildingEntryInstructions: reservation.apartment.buildingEntryInstructions,
       },
       guest: reservation.guest,
       deposit: reservation.deposit,
