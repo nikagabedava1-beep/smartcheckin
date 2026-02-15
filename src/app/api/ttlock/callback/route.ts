@@ -4,6 +4,12 @@ import { authOptions } from '@/lib/auth'
 import { ttlockClient } from '@/lib/ttlock'
 import prisma from '@/lib/prisma'
 
+// POST /api/ttlock/callback - Handle TTLock callback test
+export async function POST() {
+  // TTLock tests the callback URL with POST
+  return NextResponse.json({ success: true })
+}
+
 // GET /api/ttlock/callback - Handle TTLock OAuth callback
 export async function GET(request: Request) {
   try {
