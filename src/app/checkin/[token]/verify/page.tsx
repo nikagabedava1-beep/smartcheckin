@@ -5,7 +5,6 @@ import { useParams, useRouter } from 'next/navigation'
 import {
   Check,
   Loader2,
-  Building2,
   ChevronRight,
   FileCheck,
   CreditCard,
@@ -13,9 +12,8 @@ import {
   ArrowRight,
   AlertCircle,
   X,
+  Shield,
 } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
 import { t } from '@/lib/translations'
 
@@ -51,7 +49,6 @@ export default function VerificationPage() {
 
   useEffect(() => {
     fetchReservation()
-    // Poll for updates every 3 seconds
     const interval = setInterval(fetchReservation, 3000)
     return () => clearInterval(interval)
   }, [token])
@@ -65,19 +62,16 @@ export default function VerificationPage() {
       }
       const data = await res.json()
 
-      // If already completed, go to success
       if (data.accessCode) {
         router.replace(`/checkin/${token}/success`)
         return
       }
 
-      // If no passport uploaded, go back to start
       if (!data.guest?.passportImages || data.guest.passportImages.length === 0) {
         router.replace(`/checkin/${token}`)
         return
       }
 
-      // If deposit required but not paid, go to deposit page
       if (data.depositRequired && data.deposit?.status !== 'paid') {
         router.replace(`/checkin/${token}/deposit`)
         return
@@ -107,7 +101,6 @@ export default function VerificationPage() {
     }
   }
 
-  // Check if all requirements are met
   const passportUploaded = reservation?.guest?.passportImages && reservation.guest.passportImages.length > 0
   const passportStatus = reservation?.guest?.passportStatus || 'pending'
   const passportApproved = passportStatus === 'approved'
@@ -117,8 +110,8 @@ export default function VerificationPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-50 to-blue-100">
-        <Loader2 className="w-12 h-12 animate-spin text-primary-600" />
+      <div className="min-h-screen flex items-center justify-center bg-[#F8FAFC]">
+        <Loader2 className="w-10 h-10 animate-spin text-[#1E3A8A]" />
       </div>
     )
   }
@@ -129,89 +122,109 @@ export default function VerificationPage() {
 
   const steps = reservation.depositRequired
     ? [
-        { id: 'passport', label: t.guest.step1 },
-        { id: 'deposit', label: t.guest.step2 },
-        { id: 'complete', label: t.guest.step3 },
+        { id: 'passport', label: { ka: 'რეგისტრაცია', en: 'Registration' } },
+        { id: 'deposit', label: { ka: 'დეპოზიტი', en: 'Deposit' } },
+        { id: 'complete', label: { ka: 'წვდომა', en: 'Access' } },
       ]
     : [
-        { id: 'passport', label: t.guest.step1 },
-        { id: 'complete', label: t.guest.step2 },
+        { id: 'passport', label: { ka: 'რეგისტრაცია', en: 'Registration' } },
+        { id: 'complete', label: { ka: 'წვდომა', en: 'Access' } },
       ]
 
-  // Current step index for progress (we're at the last step before complete)
   const currentStepIndex = steps.length - 1
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary-50 to-blue-100 py-8 px-4">
-      <div className="max-w-md mx-auto">
-        {/* Header */}
-        <div className="text-center mb-6">
-          <div className="inline-flex items-center justify-center w-14 h-14 bg-primary-600 rounded-2xl mb-3">
-            <Building2 className="w-7 h-7 text-white" />
+    <div className="min-h-screen bg-[#F8FAFC]">
+      {/* Hero Header */}
+      <div className="bg-gradient-to-br from-[#1E3A8A] via-[#1E40AF] to-[#2563EB] pt-10 pb-16 px-4">
+        <div className="max-w-lg mx-auto text-center">
+          <div className="mb-6">
+            <div className="inline-flex items-center gap-2">
+              <div className="w-10 h-10 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center">
+                <Shield className="w-5 h-5 text-white" />
+              </div>
+              <span className="text-white font-bold text-xl tracking-tight">
+                SmartCheckin.ge
+              </span>
+            </div>
           </div>
-          <h1 className="text-xl font-bold text-gray-900">SmartCheckin.ge</h1>
-        </div>
 
-        {/* Progress Steps */}
-        <div className="flex items-center justify-center gap-2 mb-6">
-          {steps.map((step, index) => (
-            <div key={step.id} className="flex items-center">
-              <div
-                className={cn(
-                  'w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium',
-                  index < currentStepIndex
-                    ? 'bg-green-500 text-white'
-                    : index === currentStepIndex
-                    ? allVerified
-                      ? 'bg-green-500 text-white'
-                      : 'bg-primary-600 text-white'
-                    : 'bg-gray-200 text-gray-500'
-                )}
-              >
-                {index < currentStepIndex || (index === currentStepIndex && allVerified) ? (
-                  <Check className="w-4 h-4" />
-                ) : (
-                  index + 1
+          <h1 className="text-2xl font-bold text-white mb-2">
+            ვერიფიკაცია
+          </h1>
+          <p className="text-blue-200 text-sm font-medium">
+            Verification Status
+          </p>
+        </div>
+      </div>
+
+      <div className="max-w-lg mx-auto px-4 -mt-10">
+        {/* Step Indicator */}
+        <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-4 mb-5">
+          <div className="flex items-center justify-center gap-0">
+            {steps.map((step, index) => (
+              <div key={step.id} className="flex items-center">
+                <div className="flex flex-col items-center">
+                  <div
+                    className={cn(
+                      'w-9 h-9 rounded-full flex items-center justify-center text-sm font-semibold transition-all duration-300',
+                      index < currentStepIndex
+                        ? 'bg-green-500 text-white shadow-md shadow-green-200'
+                        : index === currentStepIndex
+                          ? allVerified
+                            ? 'bg-green-500 text-white shadow-md shadow-green-200'
+                            : 'bg-[#1E3A8A] text-white shadow-md shadow-blue-200'
+                          : 'bg-gray-100 text-gray-400'
+                    )}
+                  >
+                    {index < currentStepIndex || (index === currentStepIndex && allVerified) ? (
+                      <Check className="w-4 h-4" />
+                    ) : (
+                      index + 1
+                    )}
+                  </div>
+                  <span className={cn(
+                    'text-[10px] mt-1.5 font-medium',
+                    index <= currentStepIndex ? 'text-gray-700' : 'text-gray-400'
+                  )}>
+                    {step.label.ka}
+                  </span>
+                </div>
+                {index < steps.length - 1 && (
+                  <div className={cn(
+                    'w-14 h-0.5 mx-2 mb-5 rounded-full',
+                    index < currentStepIndex ? 'bg-green-500' : 'bg-gray-200'
+                  )} />
                 )}
               </div>
-              {index < steps.length - 1 && (
-                <ChevronRight className="w-4 h-4 mx-2 text-gray-300" />
-              )}
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
 
         {/* Verification Status Card */}
-        <Card className="mb-6">
-          <CardContent className="pt-6">
-            <div className="text-center mb-6">
-              <h2 className="text-lg font-semibold text-gray-900 mb-1">
-                ვერიფიკაცია
-              </h2>
-              <p className="text-sm text-gray-500">Verification Status</p>
-            </div>
-
-            <div className="space-y-4">
+        <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden mb-6">
+          <div className="p-6">
+            <div className="space-y-3">
               {/* Passport Status */}
               <div
                 className={cn(
                   'flex items-center justify-between p-4 rounded-xl transition-all',
                   passportApproved
-                    ? 'bg-green-50 border-2 border-green-200'
+                    ? 'bg-green-50 border border-green-100'
                     : passportRejected
-                    ? 'bg-red-50 border-2 border-red-200'
-                    : 'bg-yellow-50 border-2 border-yellow-200'
+                      ? 'bg-red-50 border border-red-100'
+                      : 'bg-amber-50 border border-amber-100'
                 )}
               >
                 <div className="flex items-center gap-3">
                   <div
                     className={cn(
-                      'w-10 h-10 rounded-full flex items-center justify-center',
+                      'w-10 h-10 rounded-xl flex items-center justify-center',
                       passportApproved
                         ? 'bg-green-500'
                         : passportRejected
-                        ? 'bg-red-500'
-                        : 'bg-yellow-500'
+                          ? 'bg-red-500'
+                          : 'bg-amber-500'
                     )}
                   >
                     {passportApproved ? (
@@ -223,64 +236,66 @@ export default function VerificationPage() {
                     )}
                   </div>
                   <div>
-                    <p className="font-medium text-gray-900">პასპორტის ფოტო</p>
-                    <p className="text-sm text-gray-500">
+                    <p className="font-semibold text-gray-900 text-sm">პასპორტის ფოტო</p>
+                    <p className="text-xs text-gray-500">
                       {passportApproved
-                        ? 'Approved'
+                        ? 'დამტკიცებულია / Approved'
                         : passportRejected
-                        ? 'Rejected - Please re-upload'
-                        : 'Pending approval'}
+                          ? 'უარყოფილია / Rejected'
+                          : 'მოლოდინში / Pending approval'}
                     </p>
                   </div>
                 </div>
                 <FileCheck
                   className={cn(
-                    'w-6 h-6',
+                    'w-5 h-5',
                     passportApproved
-                      ? 'text-green-600'
+                      ? 'text-green-500'
                       : passportRejected
-                      ? 'text-red-600'
-                      : 'text-yellow-600'
+                        ? 'text-red-500'
+                        : 'text-amber-500'
                   )}
                 />
               </div>
 
               {/* Rejection Reason */}
               {passportRejected && reservation.guest?.rejectionReason && (
-                <div className="p-4 bg-red-50 border border-red-200 rounded-xl">
+                <div className="p-4 bg-red-50 border border-red-100 rounded-xl">
                   <div className="flex items-start gap-3">
                     <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
                     <div>
-                      <p className="font-medium text-red-800 text-sm">უარყოფის მიზეზი / Rejection Reason:</p>
-                      <p className="text-red-600 text-sm mt-1">{reservation.guest.rejectionReason}</p>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="mt-3"
+                      <p className="font-semibold text-red-800 text-sm">
+                        უარყოფის მიზეზი / Rejection Reason:
+                      </p>
+                      <p className="text-red-600 text-sm mt-1">
+                        {reservation.guest.rejectionReason}
+                      </p>
+                      <button
                         onClick={() => router.push(`/checkin/${token}`)}
+                        className="mt-3 px-4 py-2 text-sm font-medium border border-red-200 rounded-xl text-red-700 hover:bg-red-100 transition-colors"
                       >
                         ხელახლა ატვირთვა / Re-upload Passport
-                      </Button>
+                      </button>
                     </div>
                   </div>
                 </div>
               )}
 
-              {/* Deposit Status (if required) */}
+              {/* Deposit Status */}
               {reservation.depositRequired && (
                 <div
                   className={cn(
                     'flex items-center justify-between p-4 rounded-xl transition-all',
                     depositVerified
-                      ? 'bg-green-50 border-2 border-green-200'
-                      : 'bg-yellow-50 border-2 border-yellow-200'
+                      ? 'bg-green-50 border border-green-100'
+                      : 'bg-amber-50 border border-amber-100'
                   )}
                 >
                   <div className="flex items-center gap-3">
                     <div
                       className={cn(
-                        'w-10 h-10 rounded-full flex items-center justify-center',
-                        depositVerified ? 'bg-green-500' : 'bg-yellow-500'
+                        'w-10 h-10 rounded-xl flex items-center justify-center',
+                        depositVerified ? 'bg-green-500' : 'bg-amber-500'
                       )}
                     >
                       {depositVerified ? (
@@ -290,16 +305,16 @@ export default function VerificationPage() {
                       )}
                     </div>
                     <div>
-                      <p className="font-medium text-gray-900">დეპოზიტი</p>
-                      <p className="text-sm text-gray-500">
+                      <p className="font-semibold text-gray-900 text-sm">დეპოზიტი</p>
+                      <p className="text-xs text-gray-500">
                         Deposit ({reservation.depositAmount} GEL)
                       </p>
                     </div>
                   </div>
                   <CreditCard
                     className={cn(
-                      'w-6 h-6',
-                      depositVerified ? 'text-green-600' : 'text-yellow-600'
+                      'w-5 h-5',
+                      depositVerified ? 'text-green-500' : 'text-amber-500'
                     )}
                   />
                 </div>
@@ -309,67 +324,77 @@ export default function VerificationPage() {
             {/* Status Message */}
             <div
               className={cn(
-                'mt-6 p-4 rounded-xl text-center',
+                'mt-6 p-5 rounded-xl text-center',
                 allVerified
-                  ? 'bg-green-100'
+                  ? 'bg-green-50 border border-green-100'
                   : passportRejected
-                  ? 'bg-red-100'
-                  : 'bg-blue-50'
+                    ? 'bg-red-50 border border-red-100'
+                    : 'bg-[#F8FAFC] border border-gray-100'
               )}
             >
               {allVerified ? (
                 <>
-                  <p className="font-semibold text-green-800">
+                  <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center mx-auto mb-3">
+                    <Check className="w-6 h-6 text-green-600" />
+                  </div>
+                  <p className="font-bold text-green-800">
                     ყველაფერი მზადაა!
                   </p>
-                  <p className="text-sm text-green-600">
-                    Everything is ready! Press Next to continue.
+                  <p className="text-sm text-green-600 mt-1">
+                    Everything is ready! Press Continue.
                   </p>
                 </>
               ) : passportRejected ? (
                 <>
-                  <AlertCircle className="w-6 h-6 text-red-600 mx-auto mb-2" />
-                  <p className="font-medium text-red-800">
+                  <div className="w-12 h-12 bg-red-100 rounded-xl flex items-center justify-center mx-auto mb-3">
+                    <AlertCircle className="w-6 h-6 text-red-600" />
+                  </div>
+                  <p className="font-bold text-red-800">
                     პასპორტი უარყოფილია
                   </p>
-                  <p className="text-sm text-red-600">
+                  <p className="text-sm text-red-600 mt-1">
                     Your passport was rejected. Please re-upload.
                   </p>
                 </>
               ) : (
                 <>
-                  <Loader2 className="w-6 h-6 animate-spin text-blue-600 mx-auto mb-2" />
-                  <p className="font-medium text-blue-800">
+                  <Loader2 className="w-10 h-10 animate-spin text-[#1E3A8A] mx-auto mb-3" />
+                  <p className="font-bold text-gray-800">
                     გთხოვთ დაელოდოთ...
                   </p>
-                  <p className="text-sm text-blue-600">
+                  <p className="text-sm text-gray-500 mt-1">
                     Please wait while the owner approves your passport...
                   </p>
                 </>
               )}
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
-        {/* Next Button (only shown when all verified) */}
+        {/* Continue Button */}
         {allVerified && (
-          <Button
+          <button
             onClick={handleComplete}
             disabled={isCompleting}
-            className="w-full py-4 text-lg bg-green-600 hover:bg-green-700"
+            className="w-full py-3.5 rounded-xl font-semibold text-sm bg-green-600 text-white hover:bg-green-700 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-600 shadow-lg shadow-green-200 active:scale-[0.99] mb-6"
           >
             {isCompleting ? (
-              <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+              <span className="flex items-center justify-center gap-2">
+                <Loader2 className="w-4 h-4 animate-spin" />
+                დამუშავება... / Processing...
+              </span>
             ) : (
-              <ArrowRight className="w-5 h-5 mr-2" />
+              <span className="flex items-center justify-center gap-2">
+                <ArrowRight className="w-4 h-4" />
+                გაგრძელება / Continue
+              </span>
             )}
-            შემდეგი / Next
-          </Button>
+          </button>
         )}
 
         {/* Footer */}
-        <div className="text-center mt-8 text-sm text-gray-500">
-          <p>SmartCheckin.ge • სმარტ ჩექინი</p>
+        <div className="text-center pb-8 text-xs text-gray-400">
+          <p>SmartCheckin.ge &bull; Secure Digital Check-in</p>
         </div>
       </div>
     </div>
