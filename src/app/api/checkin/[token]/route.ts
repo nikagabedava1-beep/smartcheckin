@@ -14,6 +14,12 @@ export async function GET(request: Request, { params }: { params: Promise<{ toke
             address: true,
             buildingEntryCode: true,
             buildingEntryInstructions: true,
+            smartLock: {
+              select: {
+                id: true,
+                ttlockName: true,
+              },
+            },
           },
         },
         guest: {
@@ -69,6 +75,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ toke
         address: reservation.apartment.address,
         buildingEntryCode: reservation.apartment.buildingEntryCode,
         buildingEntryInstructions: reservation.apartment.buildingEntryInstructions,
+        hasSmartLock: !!reservation.apartment.smartLock,
       },
       guest: reservation.guest,
       deposit: reservation.deposit,

@@ -9,6 +9,7 @@ import {
   Loader2,
   Building2,
   ChevronRight,
+  KeyRound,
 } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
@@ -21,6 +22,9 @@ interface ReservationData {
   apartment: {
     name: string
     address: string
+    hasSmartLock: boolean
+    buildingEntryCode?: string
+    buildingEntryInstructions?: string
   }
   accessCode: {
     code: string
@@ -68,10 +72,16 @@ export default function CheckInSuccessPage() {
         method: 'POST',
       })
 
-      if (!res.ok) throw new Error('Failed to unlock door')
+      const data = await res.json()
 
-      setUnlockSuccess(true)
-      toast.success('კარი გაიღო! / Door unlocked!')
+      if (!res.ok) throw new Error(data.error || 'Failed to unlock door')
+
+      if (data.ttlockUnlocked) {
+        setUnlockSuccess(true)
+        toast.success('კარი გაიღო! / Door unlocked!')
+      } else {
+        toast.error('დისტანციური გაღება მიუწვდომელია / Remote unlock not available')
+      }
 
       setTimeout(() => setUnlockSuccess(false), 3000)
     } catch {
@@ -130,48 +140,92 @@ export default function CheckInSuccessPage() {
           ))}
         </div>
 
-        {/* Instruction Card */}
-        <Card className="mb-6">
-          <CardContent className="pt-6">
-            <div className="bg-green-100 text-green-800 px-4 py-3 rounded-lg text-center">
-              <p className="font-semibold">
-                კარის გასაღებად დააჭირეთ მწვანე ღილაკს
+        {/* Access Code Card */}
+        {reservation.accessCode && (
+          <Card className="mb-6">
+            <CardContent className="pt-6">
+              <div className="text-center">
+                <div className="flex items-center justify-center gap-2 mb-3">
+                  <KeyRound className="w-5 h-5 text-green-600" />
+                  <h3 className="font-semibold text-gray-900">
+                    წვდომის კოდი / Access Code
+                  </h3>
+                </div>
+                <div className="bg-gray-900 text-white text-4xl font-mono font-bold py-5 px-6 rounded-xl tracking-[0.3em] mb-3">
+                  {reservation.accessCode.code}
+                </div>
+                <p className="text-sm text-gray-500">
+                  შეიყვანეთ ეს კოდი საკეტის კლავიატურაზე
+                </p>
+                <p className="text-sm text-gray-400">
+                  Enter this code on the lock keypad
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Building Entry Code */}
+        {reservation.apartment.buildingEntryCode && (
+          <Card className="mb-6">
+            <CardContent className="pt-6">
+              <div className="text-center">
+                <h3 className="font-semibold text-gray-900 mb-2">
+                  შენობის კოდი / Building Entry Code
+                </h3>
+                <div className="bg-blue-50 text-blue-900 text-2xl font-mono font-bold py-3 px-4 rounded-xl mb-2">
+                  {reservation.apartment.buildingEntryCode}
+                </div>
+                {reservation.apartment.buildingEntryInstructions && (
+                  <p className="text-sm text-gray-500">
+                    {reservation.apartment.buildingEntryInstructions}
+                  </p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Remote Unlock Button - only for smart lock apartments */}
+        {reservation.apartment.hasSmartLock && (
+          <>
+            <div className="text-center mb-3">
+              <p className="text-sm text-gray-500">
+                ან სცადეთ დისტანციური გაღება
               </p>
-              <p className="text-sm text-green-600 mt-1">
-                To open the door press the green button
+              <p className="text-xs text-gray-400">
+                Or try remote unlock (requires gateway)
               </p>
             </div>
-          </CardContent>
-        </Card>
-
-        {/* Big Green Circle Open Door Button */}
-        <div className="flex justify-center mb-8">
-          <button
-            onClick={handleUnlockDoor}
-            disabled={isUnlocking}
-            className={cn(
-              'w-44 h-44 rounded-full flex flex-col items-center justify-center transition-all duration-300 shadow-xl',
-              'active:scale-95 focus:outline-none focus:ring-4 focus:ring-green-300',
-              unlockSuccess
-                ? 'bg-green-400 shadow-green-300'
-                : 'bg-green-500 hover:bg-green-600 hover:shadow-2xl hover:shadow-green-200'
-            )}
-          >
-            {isUnlocking ? (
-              <Loader2 className="w-20 h-20 text-white animate-spin" />
-            ) : unlockSuccess ? (
-              <Check className="w-20 h-20 text-white" />
-            ) : (
-              <DoorOpen className="w-20 h-20 text-white" />
-            )}
-            <span className="text-white font-bold mt-2 text-xl">
-              {unlockSuccess ? 'გაიღო!' : 'გაღება'}
-            </span>
-            <span className="text-white/80 text-sm">
-              {unlockSuccess ? 'Opened!' : 'Open'}
-            </span>
-          </button>
-        </div>
+            <div className="flex justify-center mb-8">
+              <button
+                onClick={handleUnlockDoor}
+                disabled={isUnlocking}
+                className={cn(
+                  'w-32 h-32 rounded-full flex flex-col items-center justify-center transition-all duration-300 shadow-lg',
+                  'active:scale-95 focus:outline-none focus:ring-4 focus:ring-green-300',
+                  unlockSuccess
+                    ? 'bg-green-400 shadow-green-300'
+                    : 'bg-green-500 hover:bg-green-600 hover:shadow-xl hover:shadow-green-200'
+                )}
+              >
+                {isUnlocking ? (
+                  <Loader2 className="w-12 h-12 text-white animate-spin" />
+                ) : unlockSuccess ? (
+                  <Check className="w-12 h-12 text-white" />
+                ) : (
+                  <DoorOpen className="w-12 h-12 text-white" />
+                )}
+                <span className="text-white font-bold mt-1 text-sm">
+                  {unlockSuccess ? 'გაიღო!' : 'გაღება'}
+                </span>
+                <span className="text-white/80 text-xs">
+                  {unlockSuccess ? 'Opened!' : 'Open'}
+                </span>
+              </button>
+            </div>
+          </>
+        )}
 
         {/* Apartment Info & Map */}
         <Card>
@@ -223,7 +277,7 @@ export default function CheckInSuccessPage() {
 
         {/* Footer */}
         <div className="text-center mt-8 text-sm text-gray-500">
-          <p>SmartCheckin.ge • სმარტ ჩექინი</p>
+          <p>SmartCheckin.ge</p>
         </div>
       </div>
     </div>
