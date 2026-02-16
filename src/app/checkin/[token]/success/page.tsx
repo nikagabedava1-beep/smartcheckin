@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
 import {
   Check,
-  DoorOpen,
   MapPin,
   Loader2,
   Building2,
@@ -12,9 +11,7 @@ import {
   KeyRound,
 } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
-import { cn } from '@/lib/utils'
 import { t } from '@/lib/translations'
-import toast from 'react-hot-toast'
 
 interface ReservationData {
   id: string
@@ -40,8 +37,6 @@ export default function CheckInSuccessPage() {
   const [reservation, setReservation] = useState<ReservationData | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState(false)
-  const [isUnlocking, setIsUnlocking] = useState(false)
-  const [unlockSuccess, setUnlockSuccess] = useState(false)
 
   useEffect(() => {
     fetchReservation()
@@ -60,34 +55,6 @@ export default function CheckInSuccessPage() {
       setError(true)
     } finally {
       setIsLoading(false)
-    }
-  }
-
-  const handleUnlockDoor = async () => {
-    setIsUnlocking(true)
-    setUnlockSuccess(false)
-
-    try {
-      const res = await fetch(`/api/checkin/${token}/unlock`, {
-        method: 'POST',
-      })
-
-      const data = await res.json()
-
-      if (!res.ok) throw new Error(data.error || 'Failed to unlock door')
-
-      if (data.ttlockUnlocked) {
-        setUnlockSuccess(true)
-        toast.success('კარი გაიღო! / Door unlocked!')
-      } else {
-        toast.error('დისტანციური გაღება მიუწვდომელია / Remote unlock not available')
-      }
-
-      setTimeout(() => setUnlockSuccess(false), 3000)
-    } catch {
-      toast.error('ვერ გაიღო კარი / Failed to unlock door')
-    } finally {
-      setIsUnlocking(false)
     }
   }
 
@@ -186,46 +153,7 @@ export default function CheckInSuccessPage() {
           </Card>
         )}
 
-        {/* Remote Unlock Button - only for smart lock apartments */}
-        {reservation.apartment.hasSmartLock && (
-          <>
-            <div className="text-center mb-3">
-              <p className="text-sm text-gray-500">
-                ან სცადეთ დისტანციური გაღება
-              </p>
-              <p className="text-xs text-gray-400">
-                Or try remote unlock (requires gateway)
-              </p>
-            </div>
-            <div className="flex justify-center mb-8">
-              <button
-                onClick={handleUnlockDoor}
-                disabled={isUnlocking}
-                className={cn(
-                  'w-32 h-32 rounded-full flex flex-col items-center justify-center transition-all duration-300 shadow-lg',
-                  'active:scale-95 focus:outline-none focus:ring-4 focus:ring-green-300',
-                  unlockSuccess
-                    ? 'bg-green-400 shadow-green-300'
-                    : 'bg-green-500 hover:bg-green-600 hover:shadow-xl hover:shadow-green-200'
-                )}
-              >
-                {isUnlocking ? (
-                  <Loader2 className="w-12 h-12 text-white animate-spin" />
-                ) : unlockSuccess ? (
-                  <Check className="w-12 h-12 text-white" />
-                ) : (
-                  <DoorOpen className="w-12 h-12 text-white" />
-                )}
-                <span className="text-white font-bold mt-1 text-sm">
-                  {unlockSuccess ? 'გაიღო!' : 'გაღება'}
-                </span>
-                <span className="text-white/80 text-xs">
-                  {unlockSuccess ? 'Opened!' : 'Open'}
-                </span>
-              </button>
-            </div>
-          </>
-        )}
+        {/* Remote unlock removed - S534 and similar locks only support keypad passcodes */}
 
         {/* Apartment Info & Map */}
         <Card>

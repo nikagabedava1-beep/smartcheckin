@@ -179,7 +179,7 @@ class TTLockClient {
 
   // Get passcode list
   async getPasscodes(accessToken: string, lockId: number): Promise<TTLockPasscode[]> {
-    const response = await axios.post(`${TTLOCK_API_URL}/v3/lock/listKeyboardPwd`, null, {
+    const response = await axios.post(`${TTLOCK_API_URL}/v3/keyboardPwd/list`, null, {
       params: {
         clientId: this.config.clientId,
         accessToken,
