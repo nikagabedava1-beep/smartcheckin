@@ -89,7 +89,7 @@ class TTLockClient {
 
   // Get list of locks
   async getLocks(accessToken: string, pageNo: number = 1, pageSize: number = 100): Promise<TTLockLock[]> {
-    const response = await axios.get(`${TTLOCK_API_URL}/v3/lock/list`, {
+    const response = await axios.post(`${TTLOCK_API_URL}/v3/lock/list`, null, {
       params: {
         clientId: this.config.clientId,
         accessToken,
@@ -99,8 +99,10 @@ class TTLockClient {
       },
     })
 
+    console.log('TTLock getLocks response:', JSON.stringify(response.data))
+
     if (response.data.errcode !== 0) {
-      throw new Error(`TTLock API Error: ${response.data.errmsg}`)
+      throw new Error(`TTLock API Error: ${response.data.errmsg || JSON.stringify(response.data)}`)
     }
 
     return response.data.list || []
@@ -108,7 +110,7 @@ class TTLockClient {
 
   // Get lock details
   async getLockDetails(accessToken: string, lockId: number): Promise<TTLockLock> {
-    const response = await axios.get(`${TTLOCK_API_URL}/v3/lock/detail`, {
+    const response = await axios.post(`${TTLOCK_API_URL}/v3/lock/detail`, null, {
       params: {
         clientId: this.config.clientId,
         accessToken,
@@ -179,7 +181,7 @@ class TTLockClient {
 
   // Get passcode list
   async getPasscodes(accessToken: string, lockId: number): Promise<TTLockPasscode[]> {
-    const response = await axios.get(`${TTLOCK_API_URL}/v3/lock/listKeyboardPwd`, {
+    const response = await axios.post(`${TTLOCK_API_URL}/v3/lock/listKeyboardPwd`, null, {
       params: {
         clientId: this.config.clientId,
         accessToken,

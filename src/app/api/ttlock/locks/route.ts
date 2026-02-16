@@ -51,6 +51,7 @@ export async function GET() {
     return NextResponse.json({ locks })
   } catch (error) {
     console.error('Error fetching TTLock locks:', error)
-    return NextResponse.json({ error: 'Failed to fetch locks' }, { status: 500 })
+    const message = error instanceof Error ? error.message : 'Failed to fetch locks'
+    return NextResponse.json({ error: message }, { status: 500 })
   }
 }
