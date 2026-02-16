@@ -7,19 +7,16 @@ import {
   Upload,
   Check,
   CreditCard,
-  ChevronRight,
-  Building2,
   Calendar,
   MapPin,
   X,
   AlertCircle,
   Loader2,
+  Shield,
+  FileImage,
 } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
-import { BilingualText } from '@/components/ui/bilingual-text'
-import { t } from '@/lib/translations'
 import { cn } from '@/lib/utils'
+import { t } from '@/lib/translations'
 import toast from 'react-hot-toast'
 
 interface ReservationData {
@@ -83,20 +80,17 @@ export default function CheckInPage() {
       const data = await res.json()
       setReservation(data)
 
-      // Redirect to success page if already completed
       if (data.accessCode || data.status === 'checked_in') {
         router.replace(`/checkin/${token}/success`)
         return
       }
 
-      // Determine current step based on state
       if (data.deposit?.status === 'pending' && data.depositRequired) {
         setCurrentStep('deposit')
       } else if (data.guest?.consentGiven) {
         if (data.depositRequired && data.deposit?.status === 'pending') {
           setCurrentStep('deposit')
         }
-        // If consent given and no deposit required, will complete and redirect
       } else if (data.guest?.passportImages?.length > 0) {
         setCurrentStep('consent')
       }
@@ -117,7 +111,7 @@ export default function CheckInPage() {
       'image/*': ['.jpeg', '.jpg', '.png'],
       'application/pdf': ['.pdf'],
     },
-    maxSize: 10 * 1024 * 1024, // 10MB
+    maxSize: 10 * 1024 * 1024,
   })
 
   const removeFile = (index: number) => {
@@ -147,12 +141,9 @@ export default function CheckInPage() {
 
       toast.success('Passport uploaded successfully')
 
-      // Check if deposit is required
       if (reservation?.depositRequired && (!reservation?.deposit || reservation?.deposit?.status !== 'paid')) {
-        // Go to deposit payment page
         router.push(`/checkin/${token}/deposit`)
       } else {
-        // Go to verification page
         router.push(`/checkin/${token}/verify`)
       }
     } catch {
@@ -175,14 +166,12 @@ export default function CheckInPage() {
       toast.success('Consent saved')
 
       if (reservation?.depositRequired) {
-        // Go to deposit step if deposit is required and not yet paid
         if (!reservation?.deposit || reservation?.deposit?.status !== 'paid') {
           setCurrentStep('deposit')
           fetchReservation()
           return
         }
       }
-      // Complete check-in if no deposit required or already paid
       await completeCheckIn()
     } catch {
       toast.error('Failed to save consent')
@@ -204,10 +193,8 @@ export default function CheckInPage() {
       const data = await res.json()
 
       if (data.paymentUrl) {
-        // Redirect to payment page
         window.location.href = data.paymentUrl
       } else {
-        // Payment completed (mock mode)
         toast.success('Deposit paid successfully')
         await completeCheckIn()
         fetchReservation()
@@ -227,245 +214,364 @@ export default function CheckInPage() {
 
       if (!res.ok) throw new Error('Failed to complete check-in')
 
-      // Redirect to success page
       router.push(`/checkin/${token}/success`)
     } catch {
       toast.error('Failed to complete check-in')
     }
   }
 
+  const formatDate = (dateStr: string) => {
+    const date = new Date(dateStr)
+    return date.toLocaleDateString('en-GB', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+    })
+  }
+
+  // Loading state
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-50 to-blue-100">
+      <div className="min-h-screen flex items-center justify-center bg-[#F8FAFC]">
         <div className="text-center">
-          <Loader2 className="w-12 h-12 animate-spin text-primary-600 mx-auto" />
-          <p className="mt-4 text-gray-600">
+          <Loader2 className="w-10 h-10 animate-spin text-[#1E3A8A] mx-auto" />
+          <p className="mt-4 text-gray-500 text-sm">
             {t.common.loading.ka}
             <br />
-            <span className="text-sm">{t.common.loading.en}</span>
+            <span className="text-xs text-gray-400">{t.common.loading.en}</span>
           </p>
         </div>
       </div>
     )
   }
 
+  // Error state
   if (error || !reservation) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-red-50 to-orange-100 p-4">
-        <Card className="max-w-md w-full">
-          <CardContent className="pt-8 pb-6 text-center">
-            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <AlertCircle className="w-8 h-8 text-red-600" />
-            </div>
-            <h1 className="text-xl font-bold text-gray-900 mb-2">{t.guest.invalidLink.ka}</h1>
-            <p className="text-gray-600">{t.guest.invalidLink.en}</p>
-            <p className="mt-4 text-sm text-gray-500">
-              {t.guest.reservationNotFound.ka}
-              <br />
-              {t.guest.reservationNotFound.en}
-            </p>
-          </CardContent>
-        </Card>
+      <div className="min-h-screen flex items-center justify-center bg-[#F8FAFC] p-4">
+        <div className="max-w-md w-full bg-white rounded-2xl shadow-lg border border-gray-100 p-8 text-center">
+          <div className="w-16 h-16 bg-red-50 rounded-2xl flex items-center justify-center mx-auto mb-5">
+            <AlertCircle className="w-8 h-8 text-red-500" />
+          </div>
+          <h1 className="text-xl font-bold text-gray-900 mb-2">{t.guest.invalidLink.ka}</h1>
+          <p className="text-gray-500">{t.guest.invalidLink.en}</p>
+          <p className="mt-4 text-sm text-gray-400">
+            {t.guest.reservationNotFound.ka}
+            <br />
+            {t.guest.reservationNotFound.en}
+          </p>
+        </div>
       </div>
     )
   }
 
   const steps = [
-    { id: 'passport', label: t.guest.step1 },
-    { id: 'complete', label: t.guest.step2 },
+    { id: 'passport', label: { ka: 'რეგისტრაცია', en: 'Registration' } },
+    { id: 'complete', label: { ka: 'წვდომა', en: 'Access' } },
   ]
 
   const currentStepIndex = steps.findIndex((s) => s.id === currentStep)
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary-50 to-blue-100 py-8 px-4">
-      <div className="max-w-2xl mx-auto">
-        {/* Header */}
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-primary-600 rounded-2xl mb-4">
-            <Building2 className="w-8 h-8 text-white" />
+    <div className="min-h-screen bg-[#F8FAFC]">
+      {/* Hero Header */}
+      <div className="bg-gradient-to-br from-[#1E3A8A] via-[#1E40AF] to-[#2563EB] pt-10 pb-16 px-4">
+        <div className="max-w-lg mx-auto text-center">
+          {/* Logo */}
+          <div className="mb-6">
+            <div className="inline-flex items-center gap-2">
+              <div className="w-10 h-10 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center">
+                <Shield className="w-5 h-5 text-white" />
+              </div>
+              <span className="text-white font-bold text-xl tracking-tight">
+                SmartCheckin.ge
+              </span>
+            </div>
           </div>
-          <h1 className="text-2xl font-bold text-gray-900">{t.guest.welcomeTitle.ka}</h1>
-          <p className="text-gray-600">{t.guest.welcomeTitle.en}</p>
+
+          {/* Title */}
+          <h1 className="text-2xl font-bold text-white mb-2">
+            ციფრული რეგისტრაცია
+          </h1>
+          <p className="text-blue-200 text-sm font-medium mb-1">
+            Digital Check-in
+          </p>
+          <p className="text-blue-300/80 text-xs max-w-sm mx-auto mt-3 leading-relaxed">
+            გთხოვთ შეავსოთ რეგისტრაცია ბინაში შესვლამდე
+            <br />
+            Please complete registration before apartment access
+          </p>
+        </div>
+      </div>
+
+      <div className="max-w-lg mx-auto px-4 -mt-10">
+        {/* Apartment Info Card */}
+        <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-5 mb-5">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-12 h-12 bg-[#1E3A8A]/5 rounded-xl flex items-center justify-center flex-shrink-0">
+              <MapPin className="w-5 h-5 text-[#1E3A8A]" />
+            </div>
+            <div>
+              <h2 className="font-semibold text-gray-900 text-lg leading-tight">
+                {reservation.apartment.name}
+              </h2>
+              <p className="text-sm text-gray-500">
+                {reservation.apartment.address}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex gap-3">
+            <div className="flex-1 bg-[#F8FAFC] rounded-xl p-3">
+              <div className="flex items-center gap-2 mb-1">
+                <Calendar className="w-3.5 h-3.5 text-[#1E3A8A]" />
+                <span className="text-xs text-gray-500 font-medium">Check-in</span>
+              </div>
+              <p className="text-sm font-semibold text-gray-900">
+                {formatDate(reservation.checkIn)}
+              </p>
+            </div>
+            <div className="flex-1 bg-[#F8FAFC] rounded-xl p-3">
+              <div className="flex items-center gap-2 mb-1">
+                <Calendar className="w-3.5 h-3.5 text-[#1E3A8A]" />
+                <span className="text-xs text-gray-500 font-medium">Check-out</span>
+              </div>
+              <p className="text-sm font-semibold text-gray-900">
+                {formatDate(reservation.checkOut)}
+              </p>
+            </div>
+          </div>
         </div>
 
-        {/* Reservation Info */}
-        <Card className="mb-6">
-          <CardContent className="pt-6">
-            <div className="flex items-start gap-4">
-              <div className="flex-1">
-                <h2 className="font-semibold text-gray-900">{reservation.apartment.name}</h2>
-                <div className="flex items-center text-sm text-gray-500 mt-1">
-                  <MapPin className="w-4 h-4 mr-1" />
-                  {reservation.apartment.address}
-                </div>
-                <div className="flex items-center text-sm text-gray-500 mt-1">
-                  <Calendar className="w-4 h-4 mr-1" />
-                  {new Date(reservation.checkIn).toLocaleDateString('ka-GE')} -{' '}
-                  {new Date(reservation.checkOut).toLocaleDateString('ka-GE')}
-                </div>
-              </div>
-              <div className="text-right">
-                <p className="text-sm text-gray-500">
-                  {t.guest.welcomeSubtitle.ka}
-                  <br />
-                  <span className="text-xs">{t.guest.welcomeSubtitle.en}</span>
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Progress Steps */}
-        <div className="flex items-center justify-center gap-2 mb-8">
+        {/* Step Indicator */}
+        <div className="flex items-center justify-center gap-0 mb-6">
           {steps.map((step, index) => (
             <div key={step.id} className="flex items-center">
-              <div
-                className={cn(
-                  'w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium transition-colors',
-                  index < currentStepIndex
-                    ? 'bg-green-500 text-white'
-                    : index === currentStepIndex
-                    ? 'bg-primary-600 text-white'
-                    : 'bg-gray-200 text-gray-500'
-                )}
-              >
-                {index < currentStepIndex ? <Check className="w-4 h-4" /> : index + 1}
+              <div className="flex flex-col items-center">
+                <div
+                  className={cn(
+                    'w-9 h-9 rounded-full flex items-center justify-center text-sm font-semibold transition-all duration-300',
+                    index < currentStepIndex
+                      ? 'bg-green-500 text-white shadow-md shadow-green-200'
+                      : index === currentStepIndex
+                        ? 'bg-[#1E3A8A] text-white shadow-md shadow-blue-200'
+                        : 'bg-gray-100 text-gray-400'
+                  )}
+                >
+                  {index < currentStepIndex ? <Check className="w-4 h-4" /> : index + 1}
+                </div>
+                <span className={cn(
+                  'text-[10px] mt-1.5 font-medium',
+                  index <= currentStepIndex ? 'text-gray-700' : 'text-gray-400'
+                )}>
+                  {step.label.ka}
+                </span>
               </div>
               {index < steps.length - 1 && (
-                <ChevronRight className="w-4 h-4 mx-2 text-gray-300" />
+                <div className={cn(
+                  'w-20 h-0.5 mx-3 mb-5 rounded-full transition-colors duration-300',
+                  index < currentStepIndex ? 'bg-green-500' : 'bg-gray-200'
+                )} />
               )}
             </div>
           ))}
         </div>
 
-        {/* Step Content */}
-        <Card>
-          <CardContent className="pt-6">
-            {/* Passport Upload Step */}
-            {currentStep === 'passport' && (
-              <div>
-                <BilingualText text={t.guest.uploadPassport} as="h2" size="xl" className="mb-2" />
-                <p className="text-gray-500 mb-6">
-                  {t.guest.uploadPassportDesc.ka}
-                  <br />
-                  <span className="text-sm">{t.guest.uploadPassportDesc.en}</span>
-                </p>
+        {/* Step Content Card */}
+        <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden mb-6">
+          {/* Passport Upload Step */}
+          {currentStep === 'passport' && (
+            <div className="p-6">
+              <div className="flex items-center gap-3 mb-1">
+                <FileImage className="w-5 h-5 text-[#1E3A8A]" />
+                <h2 className="text-lg font-bold text-gray-900">
+                  პასპორტის ატვირთვა
+                </h2>
+              </div>
+              <p className="text-sm text-gray-500 mb-6 ml-8">
+                Upload Passport
+              </p>
 
-                <div
-                  {...getRootProps()}
-                  className={cn(
-                    'border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-colors',
-                    isDragActive
-                      ? 'border-primary-500 bg-primary-50'
-                      : 'border-gray-300 hover:border-primary-400'
-                  )}
-                >
-                  <input {...getInputProps()} />
-                  <Upload className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                  <p className="text-gray-600 mb-2">
-                    {t.guest.dragDropFiles.ka}
-                    <br />
-                    <span className="text-sm">{t.guest.dragDropFiles.en}</span>
-                  </p>
-                  <p className="text-xs text-gray-400">
-                    {t.guest.supportedFormats.ka} • {t.guest.maxFileSize.ka}
-                  </p>
-                </div>
-
-                {uploadedFiles.length > 0 && (
-                  <div className="mt-4">
-                    <p className="text-sm font-medium text-gray-700 mb-2">
-                      {t.guest.uploadedFiles.ka} / {t.guest.uploadedFiles.en}:
-                    </p>
-                    <div className="space-y-2">
-                      {uploadedFiles.map((file, index) => (
-                        <div
-                          key={index}
-                          className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
-                        >
-                          <span className="text-sm text-gray-700 truncate">{file.name}</span>
-                          <button
-                            onClick={() => removeFile(index)}
-                            className="text-gray-400 hover:text-red-500"
-                          >
-                            <X className="w-4 h-4" />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
+              {/* Upload Area */}
+              <div
+                {...getRootProps()}
+                className={cn(
+                  'border-2 border-dashed rounded-2xl p-8 text-center cursor-pointer transition-all duration-200',
+                  isDragActive
+                    ? 'border-[#1E3A8A] bg-blue-50/50'
+                    : 'border-gray-200 bg-[#F1F5F9] hover:border-[#1E3A8A]/40 hover:bg-blue-50/30'
                 )}
-
-                <Button
-                  className="w-full mt-6"
-                  onClick={handleUploadPassport}
-                  isLoading={isUploading}
-                  disabled={uploadedFiles.length === 0}
-                >
-                  {t.common.next.ka} / {t.common.next.en}
-                </Button>
-              </div>
-            )}
-
-            {/* Consent Step */}
-            {currentStep === 'consent' && (
-              <div>
-                <BilingualText text={t.guest.consentTitle} as="h2" size="xl" className="mb-2" />
-
-                <div className="bg-gray-50 rounded-xl p-6 my-6">
-                  <p className="text-gray-700 mb-4">{t.guest.consentText.ka}</p>
-                  <p className="text-sm text-gray-500">{t.guest.consentText.en}</p>
+              >
+                <input {...getInputProps()} />
+                <div className="w-16 h-16 bg-white rounded-2xl shadow-sm flex items-center justify-center mx-auto mb-4">
+                  <Upload className="w-7 h-7 text-[#1E3A8A]" />
                 </div>
-
-                <Button
-                  className="w-full"
-                  onClick={handleConsent}
-                  isLoading={isProcessing}
-                  leftIcon={<Check className="w-4 h-4" />}
-                >
-                  {t.guest.agreeConsent.ka} / {t.guest.agreeConsent.en}
-                </Button>
+                <p className="text-gray-700 font-medium mb-1">
+                  აირჩიეთ ფაილი ან გადმოიტანეთ
+                </p>
+                <p className="text-sm text-gray-400">
+                  Choose file or drag & drop here
+                </p>
+                <p className="text-xs text-gray-400 mt-3">
+                  JPG, PNG, PDF  &bull;  მაქსიმალური ზომა 10MB / Max size 10MB
+                </p>
               </div>
-            )}
 
-            {/* Deposit Step */}
-            {currentStep === 'deposit' && reservation.deposit && (
-              <div>
-                <BilingualText text={t.guest.depositRequired} as="h2" size="xl" className="mb-2" />
-
-                <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-6 my-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <span className="text-gray-700">
-                      {t.guest.depositAmount.ka} / {t.guest.depositAmount.en}:
-                    </span>
-                    <span className="text-2xl font-bold text-gray-900">
-                      {reservation.deposit.amount} GEL
-                    </span>
-                  </div>
-                  <p className="text-sm text-gray-500">
-                    {t.guest.depositInfo.ka}
-                    <br />
-                    {t.guest.depositInfo.en}
-                  </p>
+              {/* Uploaded Files */}
+              {uploadedFiles.length > 0 && (
+                <div className="mt-4 space-y-2">
+                  {uploadedFiles.map((file, index) => (
+                    <div
+                      key={index}
+                      className="flex items-center justify-between p-3 bg-green-50 border border-green-100 rounded-xl"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
+                          <Check className="w-4 h-4 text-green-600" />
+                        </div>
+                        <span className="text-sm text-gray-700 truncate max-w-[200px]">
+                          {file.name}
+                        </span>
+                      </div>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          removeFile(index)
+                        }}
+                        className="text-gray-400 hover:text-red-500 transition-colors p-1"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ))}
                 </div>
+              )}
 
-                <Button
-                  className="w-full"
-                  onClick={handlePayDeposit}
-                  isLoading={isProcessing}
-                  leftIcon={<CreditCard className="w-4 h-4" />}
-                >
-                  {t.guest.payDeposit.ka} / {t.guest.payDeposit.en}
-                </Button>
+              {/* Upload Button */}
+              <button
+                onClick={handleUploadPassport}
+                disabled={uploadedFiles.length === 0 || isUploading}
+                className={cn(
+                  'w-full mt-6 py-3.5 rounded-xl font-semibold text-sm transition-all duration-200',
+                  'focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#1E3A8A]',
+                  uploadedFiles.length === 0
+                    ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                    : 'bg-[#1E3A8A] text-white hover:bg-[#1E3A8A]/90 active:scale-[0.99] shadow-lg shadow-blue-200'
+                )}
+              >
+                {isUploading ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    იტვირთება... / Uploading...
+                  </span>
+                ) : (
+                  'გაგრძელება / Continue'
+                )}
+              </button>
+
+              {/* Trust Message */}
+              <div className="flex items-start gap-2 mt-5 p-3 bg-[#F8FAFC] rounded-xl">
+                <Shield className="w-4 h-4 text-[#1E3A8A] mt-0.5 flex-shrink-0" />
+                <p className="text-xs text-gray-500 leading-relaxed">
+                  თქვენი მონაცემები დაცულია და გამოიყენება მხოლოდ რეგისტრაციისთვის
+                  <br />
+                  <span className="text-gray-400">
+                    Your data is securely stored and used only for registration
+                  </span>
+                </p>
               </div>
-            )}
-          </CardContent>
-        </Card>
+            </div>
+          )}
+
+          {/* Consent Step */}
+          {currentStep === 'consent' && (
+            <div className="p-6">
+              <h2 className="text-lg font-bold text-gray-900 mb-1">
+                {t.guest.consentTitle.ka}
+              </h2>
+              <p className="text-sm text-gray-500 mb-6">
+                {t.guest.consentTitle.en}
+              </p>
+
+              <div className="bg-[#F8FAFC] rounded-2xl p-5 mb-6">
+                <p className="text-gray-700 text-sm leading-relaxed mb-3">
+                  {t.guest.consentText.ka}
+                </p>
+                <p className="text-xs text-gray-400 leading-relaxed">
+                  {t.guest.consentText.en}
+                </p>
+              </div>
+
+              <button
+                onClick={handleConsent}
+                disabled={isProcessing}
+                className="w-full py-3.5 rounded-xl font-semibold text-sm bg-[#1E3A8A] text-white hover:bg-[#1E3A8A]/90 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#1E3A8A] shadow-lg shadow-blue-200 active:scale-[0.99]"
+              >
+                {isProcessing ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    დამუშავება... / Processing...
+                  </span>
+                ) : (
+                  <span className="flex items-center justify-center gap-2">
+                    <Check className="w-4 h-4" />
+                    {t.guest.agreeConsent.ka} / {t.guest.agreeConsent.en}
+                  </span>
+                )}
+              </button>
+            </div>
+          )}
+
+          {/* Deposit Step */}
+          {currentStep === 'deposit' && reservation.deposit && (
+            <div className="p-6">
+              <h2 className="text-lg font-bold text-gray-900 mb-1">
+                {t.guest.depositRequired.ka}
+              </h2>
+              <p className="text-sm text-gray-500 mb-6">
+                {t.guest.depositRequired.en}
+              </p>
+
+              <div className="bg-amber-50 border border-amber-100 rounded-2xl p-5 mb-6">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-sm text-gray-600">
+                    {t.guest.depositAmount.ka} / {t.guest.depositAmount.en}
+                  </span>
+                  <span className="text-2xl font-bold text-gray-900">
+                    {reservation.deposit.amount} GEL
+                  </span>
+                </div>
+                <p className="text-xs text-gray-500 leading-relaxed">
+                  {t.guest.depositInfo.ka}
+                  <br />
+                  <span className="text-gray-400">{t.guest.depositInfo.en}</span>
+                </p>
+              </div>
+
+              <button
+                onClick={handlePayDeposit}
+                disabled={isProcessing}
+                className="w-full py-3.5 rounded-xl font-semibold text-sm bg-[#1E3A8A] text-white hover:bg-[#1E3A8A]/90 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#1E3A8A] shadow-lg shadow-blue-200 active:scale-[0.99]"
+              >
+                {isProcessing ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    დამუშავება... / Processing...
+                  </span>
+                ) : (
+                  <span className="flex items-center justify-center gap-2">
+                    <CreditCard className="w-4 h-4" />
+                    {t.guest.payDeposit.ka} / {t.guest.payDeposit.en}
+                  </span>
+                )}
+              </button>
+            </div>
+          )}
+        </div>
 
         {/* Footer */}
-        <div className="text-center mt-8 text-sm text-gray-500">
-          <p>SmartCheckin.ge • სმარტ ჩექინი</p>
+        <div className="text-center pb-8 text-xs text-gray-400">
+          <p>SmartCheckin.ge &bull; Secure Digital Check-in</p>
         </div>
       </div>
     </div>
