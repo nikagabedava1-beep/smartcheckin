@@ -99,9 +99,7 @@ class TTLockClient {
       },
     })
 
-    console.log('TTLock getLocks response:', JSON.stringify(response.data))
-
-    if (response.data.errcode !== 0) {
+    if (response.data.errcode && response.data.errcode !== 0) {
       throw new Error(`TTLock API Error: ${response.data.errmsg || JSON.stringify(response.data)}`)
     }
 
@@ -119,7 +117,7 @@ class TTLockClient {
       },
     })
 
-    if (response.data.errcode !== 0) {
+    if (response.data.errcode && response.data.errcode !== 0) {
       throw new Error(`TTLock API Error: ${response.data.errmsg}`)
     }
 
@@ -149,7 +147,7 @@ class TTLockClient {
       },
     })
 
-    if (response.data.errcode !== 0) {
+    if (response.data.errcode && response.data.errcode !== 0) {
       throw new Error(`TTLock API Error: ${response.data.errmsg}`)
     }
 
@@ -174,7 +172,7 @@ class TTLockClient {
       },
     })
 
-    if (response.data.errcode !== 0) {
+    if (response.data.errcode && response.data.errcode !== 0) {
       throw new Error(`TTLock API Error: ${response.data.errmsg}`)
     }
   }
@@ -192,7 +190,7 @@ class TTLockClient {
       },
     })
 
-    if (response.data.errcode !== 0) {
+    if (response.data.errcode && response.data.errcode !== 0) {
       throw new Error(`TTLock API Error: ${response.data.errmsg}`)
     }
 
@@ -216,7 +214,7 @@ class TTLockClient {
       },
     })
 
-    if (response.data.errcode !== 0) {
+    if (response.data.errcode && response.data.errcode !== 0) {
       throw new Error(`TTLock API Error: ${response.data.errmsg}`)
     }
 
