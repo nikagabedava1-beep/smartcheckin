@@ -60,17 +60,17 @@ export async function POST(request: Request, { params }: { params: Promise<{ tok
         }
       } catch (error) {
         console.error('TTLock unlock error:', error)
-        // Continue anyway - return success for demo purposes
+        return NextResponse.json({
+          success: false,
+          ttlockUnlocked: false,
+          error: 'Failed to unlock door',
+        }, { status: 500 })
       }
     }
-
-    // Log the unlock attempt
-    console.log(`Door unlock requested for reservation ${reservation.id} at ${now.toISOString()}`)
 
     return NextResponse.json({
       success: true,
       ttlockUnlocked,
-      message: ttlockUnlocked ? 'Door unlocked via smart lock' : 'Unlock command sent (demo mode)',
     })
   } catch (error) {
     console.error('Error unlocking door:', error)
